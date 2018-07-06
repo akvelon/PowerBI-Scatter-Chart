@@ -1,0 +1,54 @@
+{
+  "name": "visual",
+  "version": "1.0.0",
+  "author": {
+    "name": "Akvelon Inc",
+    "email": "pbisupport@akvelon.com"
+  },
+  "resources": [
+    {
+      "resourceId": "rId0",
+      "sourceType": 5,
+      "file": "resources/scatterChartByAkvelon6CFB0DAB29E746BE850B6DFD1E2789FD.pbiviz.json"
+    }
+  ],
+  "visual": {
+    "name": "scatterChartByAkvelon",
+    "displayName": "Scatter Chart by Akvelon",
+    "guid": "scatterChartByAkvelon6CFB0DAB29E746BE850B6DFD1E2789FD",
+    "visualClassName": "Visual",
+    "version": "1.0.0",
+    "description": "Scatter Chart with rectangle selection support",
+    "supportUrl": "http://akvelon.com/feedback",
+    "gitHubUrl": ""
+  },
+  "metadata": {
+    "pbivizjson": {
+      "resourceId": "rId0"
+    }
+  },
+  "dependencies": {
+    "d3": "^3.5.5",
+    "jquery": "3.1.1",
+    "powerbi-models": "^1.0.5",
+    "powerbi-visuals-utils-chartutils": "^1.5.1",
+    "powerbi-visuals-utils-colorutils": "^1.0.0",
+    "powerbi-visuals-utils-dataviewutils": "1.2.0",
+    "powerbi-visuals-utils-formattingutils": "^3.0.1",
+    "powerbi-visuals-utils-interactivityutils": "^3.2.0",
+    "powerbi-visuals-utils-tooltiputils": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/d3": "^3.5.36",
+    "@types/jquery": "2.0.41",
+    "tslint": "^5.10.0",
+    "tslint-microsoft-contrib": "^5.0.3",
+    "typescript": "^2.9.1"
+  },
+  "scripts": {
+    "postinstall": "pbiviz update 1.12.0",
+    "start": "pbiviz start",
+    "package": "pbiviz package",
+    "lint": "tslint -r \"node_modules/tslint-microsoft-contrib\"  \"+(src|test)/**/*.ts\""
+  }
+}
