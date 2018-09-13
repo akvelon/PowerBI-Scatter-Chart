@@ -166,7 +166,7 @@ module powerbi.extensibility.visual {
 
         private legend: ILegend;
         private host: IVisualHost;
-        private behavior: IInteractiveBehavior;
+        private behavior: VisualBehavior;
 
         private shapesSize: DataViewObject;
 
@@ -241,7 +241,7 @@ module powerbi.extensibility.visual {
 
             this.colorPalette = options.host.colorPalette;
 
-            visualUtils.lassoSelectorInit(mainElement);
+            visualUtils.lassoSelectorInit(mainElement); 
         }
 
         public update(options: VisualUpdateOptions) {
@@ -275,7 +275,7 @@ module powerbi.extensibility.visual {
             const categoryIndex: number = metadata.idx.category;
             let categoryValues: any[],
                 categoryObjects: DataViewObjects[],
-                categoryIdentities: DataViewScopeIdentity[],
+                categoryIdentities: any[],
                 categoryQueryName: string,
                 defaultDataPointColor: string = "",
                 showAllDataPoints: boolean = true,
@@ -440,22 +440,27 @@ module powerbi.extensibility.visual {
             };
 
             // Parse data from update options
-            let dataPoints: VisualDataPoint[] = this.transform(this.host,
-                visualSize,
-                dataView,
-                grouped,
-                categories,
-                categoryValues,
-                dataViewCategorical,
-                dataViewMetadata,
-                dataValues,
-                categoryData,
-                metadata,
-                defaultDataPointColor,
-                hasDynamicSeries,
-                categoryFormatter,
-                dataValueSource,
-                dataLabelsSettings);
+            let dataPoints: VisualDataPoint[];
+            if ( options.type === VisualUpdateType.Resize ){
+                dataPoints = this.data.dataPoints;
+            } else {
+                dataPoints = this.transform(this.host,
+                    visualSize,
+                    dataView,
+                    grouped,
+                    categories,
+                    categoryValues,
+                    dataViewCategorical,
+                    dataViewMetadata,
+                    dataValues,
+                    categoryData,
+                    metadata,
+                    defaultDataPointColor,
+                    hasDynamicSeries,
+                    categoryFormatter,
+                    dataValueSource,
+                    dataLabelsSettings);
+            }
 
             // Set width and height of visual to SVG group
             this.visualSvgGroupMarkers
@@ -635,7 +640,7 @@ module powerbi.extensibility.visual {
                 visualMargin);
             this.renderAxesConstantLines(this.data);
         }
-
+ 
         private transform(
             visualHost: IVisualHost,
             visualSize: ISize,
@@ -715,6 +720,13 @@ module powerbi.extensibility.visual {
                         measureY,
                         categoryIdx);
 
+                    let sizeVal = categoryUtils.getValueFromDataViewValueColumnById(measureSize, categoryIdx);
+                    sizeVal = sizeVal !== null && typeof sizeVal === "number" ? sizeVal : null;
+
+                    if ( xVal == null && yVal == null && sizeVal == null ){
+                        continue;
+                    }
+
                     let category = categories && categories.length > Visual.MinAmountOfCategories
                         ? categories[indicies.category]
                         : null;
@@ -749,10 +761,6 @@ module powerbi.extensibility.visual {
                             category.objects && category.objects[categoryIdx],
                             measureSource);
                     }
-
-                    let sizeVal = categoryUtils.getValueFromDataViewValueColumnById(measureSize, categoryIdx);
-
-                    sizeVal = sizeVal !== null && typeof sizeVal === "number" ? sizeVal : null;
 
                     const seriesData: tooltipBuilder.TooltipSeriesDataItem[] = [];
 
@@ -908,9 +916,7 @@ module powerbi.extensibility.visual {
                 }
             }
 
-            const filterDataPoints = dataPoints.filter(value => value.x !== null || value.y !== null || value.radius.value !== null);
-
-            return filterDataPoints;
+            return dataPoints;
         }
 
         public static createLazyFormattedCategory(formatter: IValueFormatter, value: string): () => string {
@@ -919,10 +925,14 @@ module powerbi.extensibility.visual {
 
         private renderVisual(data: VisualData) {
             const colorHelper = new ColorHelper(this.host.colorPalette);
+            const dataPoints: VisualDataPoint[] = data.dataPoints.filter(d =>
+                (data.xCol != null && d.x == null) || (data.yCol != null && d.y == null) ? false : true
+            );
+
             // Select all bar groups in our chart and bind them to our categories.
             // Each group will contain a set of bars, one for each of the values in category.
             this.scatterGroupSelect = this.visualSvgGroupMarkers.selectAll(Selectors.ScatterGroup.selectorName)
-                .data([data.dataPoints]);
+                .data([dataPoints]);
 
             // When a new category added, create a new SVG group for it.
             this.scatterGroupSelect.enter()
@@ -938,7 +948,7 @@ module powerbi.extensibility.visual {
             // that contains both value and total count of all values in this category.
             const scatterSelect = this.scatterGroupSelect
                 .selectAll(Selectors.ScatterDot.selectorName)
-                .data(data.dataPoints);
+                .data(dataPoints);
 
             // For each new value, we create a new rectange.
             scatterSelect.enter().append("circle")
@@ -988,7 +998,7 @@ module powerbi.extensibility.visual {
 
             tooltipBuilder.bindTooltip(this.tooltipServiceWrapper, scatterSelect);
 
-            this.bindInteractivityService(scatterSelect, data.dataPoints);
+            this.bindInteractivityService(scatterSelect, dataPoints);
 
             // restore saved selection
             if (!this.isSelectionRestored) {
@@ -998,6 +1008,7 @@ module powerbi.extensibility.visual {
                     });
                 });
 
+                this.behavior.selectionHandler.handleSelection(newDataPoints, false);
                 this.interactivityService.restoreSelection(newDataPoints.map(d => d.identity as ISelectionId));
                 visualUtils.passSavedPointsToLassoUtil(this.data.dataPoints);
                 this.isSelectionRestored = true;
@@ -1510,7 +1521,13 @@ module powerbi.extensibility.visual {
                 properties: {},
                 objectName: "categoryAxis",
                 validValues: {
-                    axisScale: scaleOptions
+                    axisScale: scaleOptions,
+                    valueDecimalPlaces: {
+                        numberRange: {
+                            min: 0,
+                            max: 15
+                        }
+                    }
                 }
             };
 
@@ -1639,7 +1656,13 @@ module powerbi.extensibility.visual {
                 objectName: "valueAxis",
                 validValues: {
                     axisScale: scaleOptions,
-                    secAxisScale: scaleOptions
+                    secAxisScale: scaleOptions,
+                    valueDecimalPlaces: {
+                        numberRange: {
+                            min: 0,
+                            max: 15
+                        }
+                    }
                 }
             };
 

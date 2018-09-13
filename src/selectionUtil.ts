@@ -47,7 +47,7 @@ module powerbi.extensibility.visual.visualUtils {
         selected: [],
         justSelected: [],
         justRemoved: [],
-        previousSelected: []
+        previousSelected: null
     };
 
     let notificateVisual: Function;
@@ -90,6 +90,9 @@ module powerbi.extensibility.visual.visualUtils {
                 _circles.selected.push(_circles.all[i]);
                 _circles.all[i].setAttribute('data-selection', 'selected');
             }
+        }
+        if ( _circles.previousSelected === null ){
+            _circles.previousSelected = _circles.selected;
         }
     }
 
@@ -232,8 +235,12 @@ module powerbi.extensibility.visual.visualUtils {
         }
 
         deactivateRect();
-        uploadUpdateToVisual();
         updateFillOpacity();
+        /* launching "uploadUpdateToVisual" function a little later so that the rectangle can disappear immediately
+          which looks much better than if it hung on the screen for a while.
+          In general, setTimeout is not necessary, it works well just with "uploadUpdateToVisual();"
+          */
+        setTimeout(uploadUpdateToVisual);
     }
     // /Events
 
@@ -349,6 +356,10 @@ module powerbi.extensibility.visual.visualUtils {
         }
     }
     function thereAreSelectionChanges(): boolean {
+        if ( _circles.previousSelected === null ){
+            _circles.previousSelected = _circles.selected;
+            return false;
+        }
         if (_circles.previousSelected.length !== _circles.selected.length) {
             return true;
         }
