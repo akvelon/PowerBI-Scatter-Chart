@@ -141,7 +141,11 @@ module powerbi.extensibility.visual.legendUtils {
 
         legendModule.positionChartArea(svg, legend);
 
-        let legendItems: Array<any> = [].slice.call(legendElement[0][0].children);
+        const legendGroup = legendElement[0][0];
+        /* Chromium 29.0.1504 doesn't support 'children' prop on SVG elements so we use 'childNodes' in this case.
+            This Chromium version is used for generating PDF and images on the backend.
+         */
+        let legendItems: Array<any> = [].slice.call('children' in legendGroup ? legendGroup.children : legendGroup.childNodes);
 
         legendItems = legendItems.filter(item => (item.classList.value === "legendItem" || item.classList.value === "legendTitle"));
 

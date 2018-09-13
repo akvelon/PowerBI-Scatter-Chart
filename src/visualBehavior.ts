@@ -20,6 +20,7 @@ module powerbi.extensibility.visual {
     export class VisualBehavior implements IInteractiveBehavior {
         // Implementation of IInteractiveBehavior
         options: VisualBehaviorOptions;
+        public selectionHandler: ISelectionHandler;
         public bindEvents(
             behaviorOptions: VisualBehaviorOptions,
             selectionHandler: ISelectionHandler): void {
@@ -27,6 +28,7 @@ module powerbi.extensibility.visual {
             const multiSelect: boolean = true;
 
             this.options = behaviorOptions;
+            this.selectionHandler = selectionHandler;
 
             behaviorOptions.legendItems.on("click", (item: any) => {
                 selectionHandler.handleSelection(item, false); // Selects the dataPoint
