@@ -5,14 +5,14 @@
     "guid": "scatterChartByAkvelon6CFB0DAB29E746BE850B6DFD1E2789FD",
     "visualClassName": "Visual",
     "version": "1.1.0",
-    "description": "",
-    "supportUrl": "",
-    "gitHubUrl": ""
+    "description": "Scatter Chart with rectangle selection support",
+    "supportUrl": "http://akvelon.com/feedback",
+    "gitHubUrl": "https://github.com/akvelon/PowerBI-Scatter-Chart"
   },
   "apiVersion": "2.1.0",
   "author": {
-    "name": "",
-    "email": ""
+    "name": "Akvelon Inc",
+    "email": "pbisupport@akvelon.com"
   },
   "assets": {
     "icon": "assets/icon.png"
