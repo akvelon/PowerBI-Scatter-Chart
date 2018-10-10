@@ -168,7 +168,7 @@ module powerbi.extensibility.visual.tooltipBuilder {
 
     export function bindTooltip(
         tooltipServiceWrapper: ITooltipServiceWrapper,
-        selection: d3.selection.Update<{}>): void {
+        selection: d3.Selection<any>): void {
         tooltipServiceWrapper.addTooltip(
             selection,
             (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {

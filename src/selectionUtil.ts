@@ -56,8 +56,12 @@ module powerbi.extensibility.visual.visualUtils {
     let transparencyProps: DataViewObject;
     let fillPoint: boolean;
 
+    let visualBehavior: VisualBehavior;
+
     // Interaction with visual
-    export function lassoSelectorInit(mainElement: d3.Selection<HTMLElement>): void {
+    export function lassoSelectorInit(mainElement: d3.Selection<HTMLElement>, behavior: VisualBehavior): void {
+        visualBehavior = behavior;
+
         selection.rect = mainElement.append('div').classed('selection-rect', true);
         selection.rect_node = selection.rect.node() as HTMLElement;
 
@@ -91,7 +95,7 @@ module powerbi.extensibility.visual.visualUtils {
                 _circles.all[i].setAttribute('data-selection', 'selected');
             }
         }
-        if ( _circles.previousSelected === null ){
+        if (_circles.previousSelected === null) {
             _circles.previousSelected = _circles.selected;
         }
     }
@@ -111,7 +115,8 @@ module powerbi.extensibility.visual.visualUtils {
         _circles.justSelected = [];
         _circles.justRemoved = [];
         if (thereAreSelectionChanges() && notificateVisual !== null) {
-            notificateVisual(d3.selectAll(_circles.selected));
+            const selectedItems: d3.Selection<any> = d3.selectAll(_circles.selected);
+            notificateVisual(selectedItems);
         }
 
         _circles.previousSelected = _circles.selected.slice(0);
@@ -144,6 +149,7 @@ module powerbi.extensibility.visual.visualUtils {
         showRect();
         if (!e.ctrlKey) {
             emptyCirclesSelection();
+            visualBehavior.selectionHandler.handleClearSelection();
         }
     }
 
@@ -356,7 +362,7 @@ module powerbi.extensibility.visual.visualUtils {
         }
     }
     function thereAreSelectionChanges(): boolean {
-        if ( _circles.previousSelected === null ){
+        if (_circles.previousSelected === null) {
             _circles.previousSelected = _circles.selected;
             return false;
         }

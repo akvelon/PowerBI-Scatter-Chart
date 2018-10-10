@@ -7,6 +7,7 @@ module powerbi.extensibility.visual.metadataUtils {
     const ColumnY: string = "Y";
     const ColumnSize: string = "Size";
     const ColumnGradient: string = "Gradient";
+    const ColumnPlayAxis: string = "PlayAxis";
     const ColumnShape: string = "Shape";
     const ColumnXStart: string = "XStart";
     const ColumnXEnd: string = "XEnd";
@@ -30,6 +31,7 @@ module powerbi.extensibility.visual.metadataUtils {
             yStartIndex: number = getMeasureIndexOfRole(grouped, ColumnYStart),
             yEndIndex: number = getMeasureIndexOfRole(grouped, ColumnYEnd),
             gradientIndex: number = getMeasureIndexOfRole(grouped, ColumnGradient),
+            playAxisIndex: number = getCategoryIndexOfRole(categories, ColumnPlayAxis),
             xCol: DataViewMetadataColumn,
             yCol: DataViewMetadataColumn;
 
@@ -59,7 +61,8 @@ module powerbi.extensibility.visual.metadataUtils {
                 xEnd: xEndIndex,
                 yStart: yStartIndex,
                 yEnd: yEndIndex,
-                gradient: gradientIndex
+                gradient: gradientIndex,
+                playAxis: playAxisIndex
             },
             cols: {
                 x: xCol,

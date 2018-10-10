@@ -91,6 +91,8 @@ module powerbi.extensibility.visual {
     }
 
     export class Visual implements IVisual {
+        public playAxis: visualUtils.PlayAxis;
+
         private settings: VisualSettings;
         private mainSvgElement: d3.Selection<SVGElement>;
         private visualSvgGroup: d3.Selection<SVGElement>;
@@ -98,6 +100,7 @@ module powerbi.extensibility.visual {
         private labelGraphicsContext: d3.Selection<SVGElement>;
         private labelBackgroundGraphicsContext: d3.selection.Update<any>;
         private scatterGroupSelect: d3.selection.Update<VisualDataPoint[]>;
+        private scatterSelect: d3.Selection<any>;
         private xAxisSvgGroup: d3.Selection<SVGElement>;
         private yAxisSvgGroup: d3.Selection<SVGElement>;
         private axisLabelsGroup: d3.selection.Update<string>;
@@ -185,9 +188,16 @@ module powerbi.extensibility.visual {
         private selectionSaveSettings: VisualDataViewObject;
         private selectionColorSettings: DataViewObject;
 
+        private mainElement: d3.Selection<any>;
+
+        public static readonly ResizeEndCode: number = 36; // it's wrong in VisualUpdateType enum for some reason
+
+        public static skipNextUpdate: boolean = false;
+
         constructor(options: VisualConstructorOptions) {
             // Create d3 selection from main HTML element
             const mainElement = d3.select(options.element);
+            this.mainElement = mainElement;
 
 
             // Append SVG element to it. This SVG will contain our visual
@@ -219,7 +229,7 @@ module powerbi.extensibility.visual {
                 .append("g")
                 .classed(Selectors.axisConstantLinesGroup.className, true);
 
-            this.behavior = new VisualBehavior();
+            this.behavior = new VisualBehavior(this);
 
             this.host = options.host;
 
@@ -241,10 +251,16 @@ module powerbi.extensibility.visual {
 
             this.colorPalette = options.host.colorPalette;
 
-            visualUtils.lassoSelectorInit(mainElement); 
+            visualUtils.lassoSelectorInit(mainElement, this.behavior);
+
+            this.playAxis = new visualUtils.PlayAxis(mainElement.node() as HTMLElement, this.mainSvgElement, this.tooltipServiceWrapper);
         }
 
         public update(options: VisualUpdateOptions) {
+            if (Visual.skipNextUpdate) {
+                Visual.skipNextUpdate = false;
+                return;
+            }
             const dataView = options && options.dataViews && options.dataViews[0];
 
             if (!dataView) {
@@ -272,7 +288,8 @@ module powerbi.extensibility.visual {
             const dataValues: DataViewValueColumns = dataViewCategorical.values;
             const dataValueSource: DataViewMetadataColumn = dataValues.source;
             const hasDynamicSeries: boolean = !!dataValues.source;
-            const categoryIndex: number = metadata.idx.category;
+            // if no 'Details' field we use 'Play Axis' as the category
+            const categoryIndex: number = metadata.idx.category > -1 ? metadata.idx.category : metadata.idx.playAxis;
             let categoryValues: any[],
                 categoryObjects: DataViewObjects[],
                 categoryIdentities: any[],
@@ -297,6 +314,12 @@ module powerbi.extensibility.visual {
             let xAxisConstantLineProperties = this.xAxisConstantLineProperties;
             let yAxisConstantLineProperties = this.yAxisConstantLineProperties;
 
+            // play axis - it affects the visual only if Play Axis bucket is filled
+            if (dataViewCategorical.categories && dataViewCategorical.categories[metadata.idx.playAxis]) {
+                this.playAxis.enable();
+            } else {
+                this.playAxis.disable();
+            }
 
             if (dataViewCategorical.categories
                 && dataViewCategorical.categories.length > 0
@@ -409,9 +432,13 @@ module powerbi.extensibility.visual {
 
             // Update the size of our SVG element
             if (this.mainSvgElement) {
+                // viewport size is calculated wrong sometimes, which causing Play Axis bugs.
+                // We make it safe using max value between viewport and mainElement for height and width.
+                const mainElementHeight: number = (this.mainElement.node() as HTMLElement).clientHeight;
+                const mainElementWidth: number = (this.mainElement.node() as HTMLElement).clientWidth;
                 this.mainSvgElement
-                    .attr("width", viewport.width)
-                    .attr("height", viewport.height);
+                    .attr("width", Math.max(mainElementWidth, viewport.width))
+                    .attr("height", Math.max(mainElementHeight, viewport.height));
             }
 
             // Set up margins for our visual
@@ -437,11 +464,13 @@ module powerbi.extensibility.visual {
                     - visualMargin.bottom
                     - axesSize.xAxisHeight
                     - this.legend.getMargins().height
+                    - this.playAxis.getHeight()
             };
 
+            const playAxisCategory: DataViewCategoryColumn = categories && categories[metadata.idx.playAxis];
             // Parse data from update options
             let dataPoints: VisualDataPoint[];
-            if ( options.type === VisualUpdateType.Resize ){
+            if (options.type === VisualUpdateType.Resize || options.type === Visual.ResizeEndCode) {
                 dataPoints = this.data.dataPoints;
             } else {
                 dataPoints = this.transform(this.host,
@@ -450,6 +479,7 @@ module powerbi.extensibility.visual {
                     grouped,
                     categories,
                     categoryValues,
+                    playAxisCategory,
                     dataViewCategorical,
                     dataViewMetadata,
                     dataValues,
@@ -639,8 +669,30 @@ module powerbi.extensibility.visual {
                 options.viewport,
                 visualMargin);
             this.renderAxesConstantLines(this.data);
+
+            // Play Axis
+            if (this.playAxis.isEnabled()) {
+                const playAxisUpdateData: PlayAxisUpdateData = {
+                    metadata,
+                    viewport: options.viewport,
+                    visualSize,
+                    visualMargin,
+                    axesSize,
+                    legendSize: this.legend.getMargins(),
+                    legendPosition: this.legend.getOrientation(),
+                    xTickOffset,
+                    yTickOffset,
+                    dataPoints,
+                    metadataColumn: playAxisCategory.source,
+                    scatterGroupSelect: this.scatterGroupSelect,
+                    scatterSelect: this.scatterSelect,
+                    updateType: options.type,
+                    axes: this.data.axes
+                };
+                this.playAxis.update(playAxisUpdateData);
+            }
         }
- 
+
         private transform(
             visualHost: IVisualHost,
             visualSize: ISize,
@@ -648,6 +700,7 @@ module powerbi.extensibility.visual {
             grouped: DataViewValueColumnGroup[],
             categories: DataViewCategoryColumn[],
             categoriesValues: PrimitiveValue[],
+            playAxisCategory: DataViewCategoryColumn,
             dataViewCategorical: DataViewCategorical,
             dataViewMetadata: DataViewMetadata,
             dataValues: DataViewValueColumns,
@@ -723,7 +776,7 @@ module powerbi.extensibility.visual {
                     let sizeVal = categoryUtils.getValueFromDataViewValueColumnById(measureSize, categoryIdx);
                     sizeVal = sizeVal !== null && typeof sizeVal === "number" ? sizeVal : null;
 
-                    if ( xVal == null && yVal == null && sizeVal == null ){
+                    if (xVal == null && yVal == null && sizeVal == null) {
                         continue;
                     }
 
@@ -867,6 +920,17 @@ module powerbi.extensibility.visual {
                         )
                     ));
 
+                    const playAxisValue: PrimitiveValue = playAxisCategory && playAxisCategory.values[categoryIdx];
+
+                    if (playAxisCategory) {
+                        seriesData.push({
+                            value: playAxisCategory.source.type.dateTime
+                                ? new Date(playAxisCategory.values[categoryIdx].toString()).toLocaleDateString("en-US")
+                                : playAxisCategory.values[categoryIdx],
+                            metadata: playAxisCategory
+                        });
+                    }
+
                     // add additional fields to tooltip from field buckets
                     if (additionalTooltipValues && additionalTooltipValues.length > 0) {
                         additionalTooltipValues.map((tooltipValue, i) => {
@@ -911,7 +975,8 @@ module powerbi.extensibility.visual {
                         equalDataPointLabelsCount: {
                             i: 0,
                             count: 1
-                        }
+                        },
+                        playAxisValue
                     });
                 }
             }
@@ -949,6 +1014,8 @@ module powerbi.extensibility.visual {
             const scatterSelect = this.scatterGroupSelect
                 .selectAll(Selectors.ScatterDot.selectorName)
                 .data(dataPoints);
+
+            this.scatterSelect = scatterSelect;
 
             // For each new value, we create a new rectange.
             scatterSelect.enter().append("circle")
@@ -992,6 +1059,9 @@ module powerbi.extensibility.visual {
 
                         return Visual.DefaultStrokeWidth;
                     }
+                })
+                .each(function (d, i) {
+                    d.index = i;
                 });
 
             labelLayoutUtils.bindLabelLayout(this.data.dataLabelsSettings, data, this.labelGraphicsContext, this.labelBackgroundGraphicsContext, <number>this.shapesSize.size);
@@ -1246,7 +1316,8 @@ module powerbi.extensibility.visual {
                     textSelectionX.attr({
                         "transform": svg.translate(
                             (width + margin.left) / Visual.AxisLabelOffset,
-                            (height + this.data.size.height + xFontSize) / 2)
+                            height - this.legend.getMargins().height - this.playAxis.getHeight() - xFontSize
+                        )
                     });
 
                     if (xTitle && xTitle.toString().length > 0) {
