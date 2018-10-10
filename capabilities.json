@@ -69,6 +69,12 @@
             ]
         },
         {
+            "name": "PlayAxis",
+            "kind": "Grouping",
+            "displayName": "Play Axis",
+            "displayNameKey": "Role_DisplayName_PlayAxis"
+        },
+        {
             "name": "Tooltips",
             "kind": "Measure",
             "displayName": "Tooltips",
@@ -102,6 +108,9 @@
                     "Gradient": {
                         "max": 1
                     },
+                    "PlayAxis": {
+                        "max": 1
+                    },
                     "ColorFill": {
                         "max": 0
                     }
@@ -125,6 +134,9 @@
                     "Gradient": {
                         "max": 0
                     },
+                    "PlayAxis": {
+                        "max": 1
+                    },
                     "ColorFill": {
                         "max": 1
                     }
@@ -148,6 +160,9 @@
                     "Gradient": {
                         "max": 0
                     },
+                    "PlayAxis": {
+                        "max": 1
+                    },
                     "ColorFill": {
                         "max": 0
                     }
@@ -171,6 +186,9 @@
                     "Gradient": {
                         "max": 0
                     },
+                    "PlayAxis": {
+                        "max": 1
+                    },
                     "ColorFill": {
                         "max": 1
                     }
@@ -193,6 +211,9 @@
                     },
                     "Gradient": {
                         "max": 0
+                    },
+                    "PlayAxis": {
+                        "max": 1
                     },
                     "ColorFill": {
                         "max": 0
@@ -201,9 +222,18 @@
             ],
             "categorical": {
                 "categories": {
-                    "for": {
-                        "in": "Category"
-                    },
+                    "select": [
+                        {
+                            "for": {
+                                "in": "Category"
+                            }
+                        },
+                        {
+                            "for": {
+                                "in": "PlayAxis"
+                            }
+                        }
+                    ],
                     "dataReductionAlgorithm": {
                         "top": {
                             "count": 30000

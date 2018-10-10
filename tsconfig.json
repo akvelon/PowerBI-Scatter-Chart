@@ -34,6 +34,7 @@
     "src/utils.ts",
     "src/selectionUtil.ts",
     "src/selectionSaveUtils.ts",
+    "src/playAxisUtil.ts",
     "src/visualBehavior.ts",
     "src/visual.ts"
   ]

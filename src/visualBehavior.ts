@@ -20,7 +20,16 @@ module powerbi.extensibility.visual {
     export class VisualBehavior implements IInteractiveBehavior {
         // Implementation of IInteractiveBehavior
         options: VisualBehaviorOptions;
+        visual: Visual;
+
+        private skipNextRendering: boolean = false;
+
         public selectionHandler: ISelectionHandler;
+
+        constructor(visual: Visual) {
+            this.visual = visual;
+        }
+
         public bindEvents(
             behaviorOptions: VisualBehaviorOptions,
             selectionHandler: ISelectionHandler): void {
@@ -36,6 +45,8 @@ module powerbi.extensibility.visual {
 
             if (this.options.lassoSelectorUpdate) {
                 this.options.lassoSelectorUpdate(this.options.selection, this.options.pointsTransparencyProperties, this.options.fillPoint, this.options.data, (circles) => {
+                    Visual.skipNextUpdate = true; // we prevent the next update so that the Play Axis doesn't get resetted
+                    this.skipNextRendering = true;
                     selectionHandler.handleClearSelection();
                     if (circles.data().length > 0) {
                         selectionHandler.handleSelection(circles.data(), false);
@@ -47,7 +58,15 @@ module powerbi.extensibility.visual {
         }
 
         public renderSelection(hasSelection: boolean): void {
-            let currentSelection = this.options.selection.data().filter(d => d.selected);
+            if (this.skipNextRendering) {
+                this.skipNextRendering = false;
+                return;
+            }
+            const currentSelection = this.options.selection.filter(d => d.selected && d.isShown);
+            const selectedDataPoints: VisualDataPoint[] = currentSelection.data();
+
+            Visual.skipNextUpdate = true;
+            this.visual.playAxis.onSelect(currentSelection, true);
 
             // Style for legend filter
             this.options.selection.style({
@@ -81,8 +100,8 @@ module powerbi.extensibility.visual {
                 }
             });
 
-            if (!visualUtils.compareObjects(currentSelection, this.options.selectionSaveSettings, "identity.key") && hasSelection) {
-                selectionSaveUtils.saveSelection(currentSelection, this.options.host);
+            if (!visualUtils.compareObjects(selectedDataPoints, this.options.selectionSaveSettings, "identity.key") && hasSelection) {
+                selectionSaveUtils.saveSelection(selectedDataPoints, this.options.host);
             }
         }
     }

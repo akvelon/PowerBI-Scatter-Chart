@@ -35,6 +35,9 @@ module powerbi.extensibility.visual {
     import LegendData = powerbi.extensibility.utils.chart.legend.LegendData;
     import PointDataLabelsSettings = powerbi.extensibility.utils.chart.dataLabel.PointDataLabelsSettings;
 
+    // legend
+    import LegendPosition = powerbi.extensibility.utils.chart.legend.LegendPosition;
+
     export interface IMargin {
         top: number;
         bottom: number;
@@ -148,6 +151,12 @@ module powerbi.extensibility.visual {
         yEnd?: number;
         labelX?: number;
         labelY?: number;
+        index?: number;
+        entirePath?: VisualDataPoint[];
+        playAxisValue?: PrimitiveValue;
+        pathDistances?: number[];
+        pathElement?: SVGElement;
+        isShown?: boolean;
     }
 
     export interface VisualLabelsCount {
@@ -195,6 +204,7 @@ module powerbi.extensibility.visual {
         yStart?: number;
         yEnd?: number;
         gradient?: number;
+        playAxis?: number;
     }
 
     export interface ICategoryData {
@@ -216,5 +226,23 @@ module powerbi.extensibility.visual {
 
     export interface VisualDataViewObject extends DataViewObject {
         selection: VisualDataPoint[];
+    }
+
+    export interface PlayAxisUpdateData {
+        metadata: VisualMeasureMetadata;
+        viewport: IViewport;
+        visualSize: ISize;
+        visualMargin: IMargin;
+        axesSize: IAxesSize;
+        legendSize: IViewport;
+        legendPosition: LegendPosition;
+        xTickOffset: number;
+        yTickOffset: number;
+        dataPoints: VisualDataPoint[];
+        metadataColumn: DataViewMetadataColumn;
+        scatterGroupSelect: d3.selection.Update<VisualDataPoint[]>;
+        scatterSelect: d3.Selection<any>;
+        updateType: VisualUpdateType;
+        axes: IAxes;
     }
 }

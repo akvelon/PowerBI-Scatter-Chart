@@ -30,6 +30,7 @@
   "dependencies": {
     "d3": "^3.5.5",
     "jquery": "3.1.1",
+    "jquery-ui-slider": "^1.12.1",
     "powerbi-models": "^1.0.5",
     "powerbi-visuals-tools": "^2.1.0",
     "powerbi-visuals-utils-chartutils": "^1.7.1",
@@ -47,7 +48,7 @@
     "typescript": "^2.9.1"
   },
   "scripts": {
-    "postinstall": "pbiviz update 1.12.0",
+    "postinstall": "pbiviz update 2.1.0",
     "start": "pbiviz start",
     "package": "pbiviz package",
     "lint": "tslint -r \"node_modules/tslint-microsoft-contrib\"  \"+(src|test)/**/*.ts\""
