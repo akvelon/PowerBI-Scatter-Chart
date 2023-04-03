@@ -9,7 +9,7 @@
     "supportUrl": "http://akvelon.com/feedback",
     "gitHubUrl": "https://github.com/akvelon/PowerBI-Scatter-Chart"
   },
-  "apiVersion": "2.1.0",
+  "apiVersion": "1.13.0",
   "author": {
     "name": "Akvelon Inc",
     "email": "pbisupport@akvelon.com"
@@ -17,24 +17,8 @@
   "assets": {
     "icon": "assets/icon.png"
   },
-  "externalJS": [
-    "node_modules/d3/d3.min.js",
-    "node_modules/globalize/lib/globalize.js",
-    "node_modules/globalize/lib/cultures/globalize.culture.en-US.js",
-    "node_modules/powerbi-visuals-utils-dataviewutils/lib/index.js",
-    "node_modules/powerbi-visuals-utils-typeutils/lib/index.js",
-    "node_modules/powerbi-visuals-utils-svgutils/lib/index.js",
-    "node_modules/powerbi-visuals-utils-interactivityutils/lib/index.js",
-    "node_modules/powerbi-visuals-utils-tooltiputils/lib/index.js",
-    "node_modules/powerbi-visuals-utils-formattingutils/lib/index.js",
-    "node_modules/powerbi-visuals-utils-chartutils/lib/index.js",
-    "node_modules/powerbi-visuals-utils-colorutils/lib/index.js",
-    "node_modules/jquery/dist/jquery.min.js",
-    "src/init.jquery.js",
-    "node_modules/jquery-ui-slider/jquery-ui.min.js"
-  ],
+  "externalJS": [],
   "style": "style/visual.less",
   "capabilities": "capabilities.json",
-  "dependencies": "dependencies.json",
   "stringResources": []
 }
