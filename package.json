@@ -28,27 +28,28 @@
     }
   },
   "dependencies": {
-    "d3": "^3.5.5",
     "jquery": "3.1.1",
     "jquery-ui-slider": "^1.12.1",
-    "powerbi-models": "^1.0.5",
-    "powerbi-visuals-tools": "^2.1.0",
-    "powerbi-visuals-utils-chartutils": "^1.7.1",
-    "powerbi-visuals-utils-colorutils": "^1.0.0",
-    "powerbi-visuals-utils-dataviewutils": "1.2.0",
-    "powerbi-visuals-utils-formattingutils": "^3.0.1",
-    "powerbi-visuals-utils-interactivityutils": "^4.1.1",
-    "powerbi-visuals-utils-tooltiputils": "^1.0.0"
+    "powerbi-visuals-api": "4.7.0",
+    "d3-array": "^3.2.2",
+    "d3-axis": "^3.0.0",
+    "d3-scale": "^4.0.2",
+    "d3-selection": "^3.0.0",
+    "powerbi-visuals-utils-chartutils": "3.0.1",
+    "powerbi-visuals-utils-svgutils": "3.0.0",
+    "powerbi-visuals-utils-colorutils": "3.0.0",
+    "powerbi-visuals-utils-dataviewutils": "2.4.1",
+    "powerbi-visuals-utils-formattingutils": "5.0.0",
+    "powerbi-visuals-utils-interactivityutils": "6.0.0",
+    "powerbi-visuals-utils-tooltiputils": "2.5.2"
   },
   "devDependencies": {
-    "@types/d3": "^3.5.36",
     "@types/jquery": "2.0.41",
     "tslint": "^5.10.0",
     "tslint-microsoft-contrib": "^5.0.3",
     "typescript": "^2.9.1"
   },
   "scripts": {
-    "postinstall": "pbiviz update 2.1.0",
     "start": "pbiviz start",
     "package": "pbiviz package",
     "lint": "tslint -r \"node_modules/tslint-microsoft-contrib\"  \"+(src|test)/**/*.ts\""
