@@ -7,13 +7,17 @@ import {ISize} from 'powerbi-visuals-utils-svgutils/lib/shapes/shapesInterfaces'
 import {IAxisProperties} from 'powerbi-visuals-utils-chartutils/lib/axis/axisInterfaces';
 import {PointDataLabelsSettings} from 'powerbi-visuals-utils-chartutils/lib/dataLabel/dataLabelInterfaces';
 import {LegendData} from 'powerbi-visuals-utils-chartutils/lib/legend/legendInterfaces';
+import DataViewCategoryColumn = powerbi.DataViewCategoryColumn;
+import DataViewValueColumnGroup = powerbi.DataViewValueColumnGroup;
+import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
+import DataViewObject = powerbi.DataViewObject;
 
-// export interface IMargin {
-//     top: number;
-//     bottom: number;
-//     left: number;
-//     right: number;
-// }
+export interface IMargin {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+}
 
 export interface VisualData {
     dataPoints: VisualDataPoint[];
@@ -37,10 +41,10 @@ export interface VisualData {
 //     };
 }
 
-// export interface IAxesSize {
-//     xAxisHeight: number;
-//     yAxisWidth: number;
-// }
+export interface IAxesSize {
+    xAxisHeight: number;
+    yAxisWidth: number;
+}
 
 export interface IAxes {
     x: IAxisProperties;
@@ -138,60 +142,60 @@ export interface VisualLabelsCount {
 //     dx: number;
 //     dy: number;
 // }
-//
-// export interface VisualAxesLabels {
-//     x: string;
-//     y: string;
-// }
-//
-// export interface VisualMeasureMetadataColumns {
-//     x?: DataViewMetadataColumn;
-//     y?: DataViewMetadataColumn;
-//     size?: DataViewMetadataColumn;
-// }
-//
-// export interface VisualMeasureMetadata {
-//     idx: VisualMeasureMetadataIndexes;
-//     cols: VisualMeasureMetadataColumns;
-//     axesLabels: VisualAxesLabels;
-// }
-//
-// export interface VisualMeasureMetadataIndexes {
-//     category?: number;
-//     x?: number;
-//     y?: number;
-//     size?: number;
-//     colorFill?: number;
-//     shape?: number;
-//     xStart?: number;
-//     xEnd?: number;
-//     yStart?: number;
-//     yEnd?: number;
-//     gradient?: number;
-//     playAxis?: number;
-// }
-//
-// export interface ICategoryData {
-//     title: string;
-//     categories: {
-//         [categoryName: string]: ICategory;
-//     };
-// }
-//
-// export interface ICategory {
-//     name: string;
-//     selectionColumn: DataViewCategoryColumn;
-//     columnGroup: DataViewValueColumnGroup;
-// }
-//
+
+export interface VisualAxesLabels {
+    x: string;
+    y: string;
+}
+
+export interface VisualMeasureMetadataColumns {
+    x?: DataViewMetadataColumn;
+    y?: DataViewMetadataColumn;
+    size?: DataViewMetadataColumn;
+}
+
+export interface VisualMeasureMetadata {
+    idx: VisualMeasureMetadataIndexes;
+    cols: VisualMeasureMetadataColumns;
+    axesLabels: VisualAxesLabels;
+}
+
+export interface VisualMeasureMetadataIndexes {
+    category?: number;
+    x?: number;
+    y?: number;
+    size?: number;
+    colorFill?: number;
+    shape?: number;
+    xStart?: number;
+    xEnd?: number;
+    yStart?: number;
+    yEnd?: number;
+    gradient?: number;
+    playAxis?: number;
+}
+
+export interface ICategoryData {
+    title: string;
+    categories: {
+        [categoryName: string]: ICategory;
+    };
+}
+
+export interface ICategory {
+    name: string;
+    selectionColumn: DataViewCategoryColumn;
+    columnGroup: DataViewValueColumnGroup;
+}
+
 // export interface SelectionSaveSettings {
 //     selection: string;
 // }
-//
-// export interface VisualDataViewObject extends DataViewObject {
-//     selection: VisualDataPoint[];
-// }
-//
+
+export interface VisualDataViewObject extends DataViewObject {
+    selection: VisualDataPoint[];
+}
+
 // export interface PlayAxisUpdateData {
 //     metadata: VisualMeasureMetadata;
 //     viewport: IViewport;

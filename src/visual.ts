@@ -15,7 +15,14 @@ import '../style/visual.less';
 import {
     createInteractivitySelectionService,
 } from 'powerbi-visuals-utils-interactivityutils/lib/interactivitySelectionService';
-import {VisualData, VisualDataPoint} from './visualInterfaces';
+import {
+    IAxesSize,
+    IMargin,
+    VisualData,
+    VisualDataLabelsSettings,
+    VisualDataPoint,
+    VisualDataViewObject,
+} from './visualInterfaces';
 import {createLegend} from 'powerbi-visuals-utils-chartutils/lib/legend/legend';
 import {ILegend, LegendPosition} from 'powerbi-visuals-utils-chartutils/lib/legend/legendInterfaces';
 import {createTooltipServiceWrapper, ITooltipServiceWrapper} from 'powerbi-visuals-utils-tooltiputils';
@@ -27,7 +34,6 @@ import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInst
 import VisualObjectInstanceEnumeration = powerbi.VisualObjectInstanceEnumeration;
 import VisualObjectInstance = powerbi.VisualObjectInstance;
 import DataViewObject = powerbi.DataViewObject;
-import DataViewCategorical = powerbi.DataViewCategorical;
 import {hasGradientRole} from './gradientUtils';
 import {isLogScalePossible} from 'powerbi-visuals-utils-chartutils/lib/axis/axis';
 import {axisScale, axisStyle, dataLabelUtils} from 'powerbi-visuals-utils-chartutils';
@@ -36,6 +42,33 @@ import {AxisType} from './axisType';
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 import {ColorHelper} from 'powerbi-visuals-utils-colorutils';
 import IVisualSelectionId = powerbi.visuals.ISelectionId;
+import {VisualSettings} from './settings';
+import {getCategories} from './categoryUtils';
+import {getMetadata} from './metadataUtils';
+import {
+    getCategoryAxisProperties,
+    getValueAxisProperties,
+    getXConstantLineProperties,
+    getYConstantLineProperties,
+    setCategoryAxisProperties,
+    setValueAxisProperties,
+    setXConstantLineProperties,
+    setYConstantLineProperties,
+} from './axesPropertiesUtils';
+import {
+    getPointsTransparencyProperties,
+    getSelectionColorSettings,
+    getSelectionSaveSettings,
+    getShapesSizeProperty, setPointsTransparencyProperty, setSelectionColorProperty, setSelectionSaveProperty,
+} from './formatPaneUtils';
+import {buildLegendData, getLegendProperties, setLegendProperties} from './legendUtils';
+import PrimitiveValue = powerbi.PrimitiveValue;
+import {valueFormatter} from 'powerbi-visuals-utils-formattingutils';
+import {IValueFormatter} from 'powerbi-visuals-utils-formattingutils/lib/src/valueFormatter';
+import CustomVisualOpaqueIdentity = powerbi.visuals.CustomVisualOpaqueIdentity;
+import DataViewObjects = powerbi.DataViewObjects;
+import {dataViewObjects} from 'powerbi-visuals-utils-dataviewutils';
+import {PropertiesOfCapabilities} from './properties';
 
 class Selectors {
     static readonly MainSvg = createClassAndSelector('lasso-scatter-chart-svg');
@@ -93,27 +126,28 @@ export class Visual implements IVisual {
 
     public static skipNextUpdate: boolean = false;
 
-    public playAxis: PlayAxis;
+    public readonly playAxis: PlayAxis;
 
-    private mainElement: Selection<HTMLElement, unknown, null, undefined>;
-    private mainSvgElement: Selection<SVGSVGElement, unknown, null, undefined>;
-    private visualSvgGroup: Selection<SVGGElement, unknown, null, undefined>;
-    private visualSvgGroupMarkers: Selection<SVGSVGElement, unknown, null, undefined>;
-    private labelGraphicsContext: Selection<SVGGElement, unknown, null, undefined>;
-    private xAxisSvgGroup: Selection<SVGGElement, unknown, null, undefined>;
-    private yAxisSvgGroup: Selection<SVGGElement, unknown, null, undefined>;
-    private axisConstantLinesGroup: Selection<SVGGElement, unknown, null, undefined>;
-    private clearCatcher: Selection<any, any, any, any>;
-    private axisGraphicsContext: Selection<SVGGElement, unknown, null, undefined>;
-    private interactivityService: IInteractivityService<VisualDataPoint>;
-    private colorPalette: ISandboxExtendedColorPalette;
-    private legend: ILegend;
-    private host: IVisualHost;
-    private behavior: VisualBehavior;
-    private tooltipServiceWrapper: ITooltipServiceWrapper;
+    private readonly mainElement: Selection<HTMLElement, unknown, null, undefined>;
+    private readonly mainSvgElement: Selection<SVGSVGElement, unknown, null, undefined>;
+    private readonly visualSvgGroup: Selection<SVGGElement, unknown, null, undefined>;
+    private readonly visualSvgGroupMarkers: Selection<SVGSVGElement, unknown, null, undefined>;
+    private readonly labelGraphicsContext: Selection<SVGGElement, unknown, null, undefined>;
+    private readonly xAxisSvgGroup: Selection<SVGGElement, unknown, null, undefined>;
+    private readonly yAxisSvgGroup: Selection<SVGGElement, unknown, null, undefined>;
+    private readonly axisConstantLinesGroup: Selection<SVGGElement, unknown, null, undefined>;
+    private readonly clearCatcher: Selection<any, any, any, any>;
+    private readonly axisGraphicsContext: Selection<SVGGElement, unknown, null, undefined>;
+    private readonly interactivityService: IInteractivityService<VisualDataPoint>;
+    private readonly colorPalette: ISandboxExtendedColorPalette;
+    private readonly legend: ILegend;
+    private readonly host: IVisualHost;
+    private readonly behavior: VisualBehavior;
+    private readonly tooltipServiceWrapper: ITooltipServiceWrapper;
 
     private data: VisualData | null = null;
     private dataView: DataView | null = null;
+    private settings: VisualSettings | null = null;
     private axisLabelsGroup: Selection<null, unknown, null, unknown> | null = null; // string
     private scatterGroupSelect: Selection<null, unknown, null, unknown> | null = null; // VisualDataPoint[]
     private legendProperties: DataViewObject | null = null;
@@ -124,11 +158,9 @@ export class Visual implements IVisual {
     private pointsTransparencyProperties: DataViewObject | null = null;
     private xAxisConstantLineProperties: DataViewObject | null = null;
     private yAxisConstantLineProperties: DataViewObject | null = null;
+    private selectionSaveSettings: VisualDataViewObject | null = null;
     private yAxisIsCategorical: boolean | null = null;
     private fillPoint: boolean | null = null;
-
-
-//         private settings: VisualSettings;
 
 
 //         private labelBackgroundGraphicsContext: d3.selection.Update<any>;
@@ -143,9 +175,6 @@ export class Visual implements IVisual {
 
 //         // DataViewObject Properties
 //
-
-
-//         private selectionSaveSettings: VisualDataViewObject;
 
 
     constructor(options: VisualConstructorOptions) {
@@ -243,205 +272,208 @@ export class Visual implements IVisual {
 
             this.dataView = dataView;
 
-            console.log(dataView);
+            // Parse settings
+            this.settings = VisualSettings.parse<VisualSettings>(dataView);
 
-//             // Parse settings
-//             this.settings = Visual.parseSettings(dataView);
-//
-//             // Get categories for legend
-//             const categoryData = categoryUtils.getCategories(dataView);
-//
-//             // Get metadata
-//             const grouped: DataViewValueColumnGroup[] = dataView.categorical.values.grouped();
-//             const source: DataViewMetadataColumn = dataView.metadata.columns[0];
-//
-//             const categories: DataViewCategoryColumn[] = dataView.categorical.categories || [];
-//             // const categoriesValues: PrimitiveValue[] = categories[0].values;
-//             const metadata: VisualMeasureMetadata = metadataUtils.getMetadata(categories, grouped, source);
-//             const dataViewCategorical: DataViewCategorical = dataView.categorical;
-//             const dataViewMetadata: DataViewMetadata = dataView.metadata;
-//             const dataValues: DataViewValueColumns = dataViewCategorical.values;
-//             const dataValueSource: DataViewMetadataColumn = dataValues.source;
-//             const hasDynamicSeries: boolean = !!dataValues.source;
-//             // if no 'Details' field we use 'Play Axis' as the category
-//             const categoryIndex: number = metadata.idx.category > -1 ? metadata.idx.category : metadata.idx.playAxis;
-//             let categoryValues: any[],
-//                 categoryObjects: DataViewObjects[],
-//                 categoryIdentities: any[],
-//                 categoryQueryName: string,
-//                 defaultDataPointColor: string = "",
-//                 showAllDataPoints: boolean = true,
-//                 categoryFormatter: IValueFormatter;
-//
-//             this.categoryAxisProperties = axesPropertiesUtils.getCategoryAxisProperties(dataViewMetadata, true);
-//             this.valueAxisProperties = axesPropertiesUtils.getValueAxisProperties(dataViewMetadata, true);
-//             this.xAxisConstantLineProperties = axesPropertiesUtils.getXConstantLineProperties(dataViewMetadata);
-//             this.yAxisConstantLineProperties = axesPropertiesUtils.getYConstantLineProperties(dataViewMetadata);
-//             this.fillPoint = Visual.DefaultFillPoint;
-//             this.shapesSize = formatPaneUtils.getShapesSizeProperty(dataViewMetadata);
-//             this.legendProperties = legendUtils.getLegendProperties(dataViewMetadata, true);
-//             this.pointsTransparencyProperties = formatPaneUtils.getPointsTransparencyProperties(dataViewMetadata);
-//             this.selectionSaveSettings = formatPaneUtils.getSelectionSaveSettings(dataViewMetadata);
-//             this.selectionColorSettings = formatPaneUtils.getSelectionColorSettings(dataViewMetadata);
-//
-//             let categoryAxisProperties = this.categoryAxisProperties;
-//             let valueAxisProperties = this.valueAxisProperties;
-//             let xAxisConstantLineProperties = this.xAxisConstantLineProperties;
-//             let yAxisConstantLineProperties = this.yAxisConstantLineProperties;
-//
+            // Get categories for legend
+            const categoryData = getCategories(dataView);
+
+            // Get metadata
+            const grouped = dataView.categorical?.values?.grouped();
+            const source = dataView.metadata.columns[0];
+
+            const categories = dataView.categorical?.categories || [];
+            const categoriesValues = categories[0].values;
+            const metadata = getMetadata(categories, grouped);
+            const dataViewCategorical = dataView.categorical;
+            const dataViewMetadata = dataView.metadata;
+            const dataValues = dataViewCategorical?.values;
+            const dataValueSource = dataValues?.source;
+            if (!dataValues || !dataValueSource) {
+                // Should not happen.
+                return;
+            }
+
+
+            const hasDynamicSeries = !!dataValues.source;
+
+            // if no 'Details' field we use 'Play Axis' as the category
+            const categoryIndex = typeof metadata.idx.category !== 'undefined' && metadata.idx.category > -1 ? metadata.idx.category : metadata.idx.playAxis ?? 0;
+
+            let categoryValues: PrimitiveValue[] | [null];
+            let categoryObjects: DataViewObjects[] | undefined;
+            let categoryIdentities: CustomVisualOpaqueIdentity[] | undefined;
+            let categoryQueryName: string | undefined;
+            let defaultDataPointColor: string = '';
+            let showAllDataPoints: boolean = true;
+            let categoryFormatter: IValueFormatter;
+
+            this.categoryAxisProperties = getCategoryAxisProperties(dataViewMetadata, true);
+            this.valueAxisProperties = getValueAxisProperties(dataViewMetadata, true);
+            this.xAxisConstantLineProperties = getXConstantLineProperties(dataViewMetadata);
+            this.yAxisConstantLineProperties = getYConstantLineProperties(dataViewMetadata);
+            this.fillPoint = Visual.DefaultFillPoint;
+            this.shapesSize = getShapesSizeProperty(dataViewMetadata);
+            this.legendProperties = getLegendProperties(dataViewMetadata, true);
+            this.pointsTransparencyProperties = getPointsTransparencyProperties(dataViewMetadata);
+            this.selectionSaveSettings = getSelectionSaveSettings(dataViewMetadata);
+            this.selectionColorSettings = getSelectionColorSettings(dataViewMetadata);
+
+            const categoryAxisProperties = this.categoryAxisProperties;
+            const valueAxisProperties = this.valueAxisProperties;
+            const xAxisConstantLineProperties = this.xAxisConstantLineProperties;
+            const yAxisConstantLineProperties = this.yAxisConstantLineProperties;
+
 //             // play axis - it affects the visual only if Play Axis bucket is filled
 //             if (dataViewCategorical.categories && dataViewCategorical.categories[metadata.idx.playAxis]) {
 //                 this.playAxis.enable();
 //             } else {
 //                 this.playAxis.disable();
 //             }
-//
-//             if (dataViewCategorical.categories
-//                 && dataViewCategorical.categories.length > 0
-//                 && dataViewCategorical.categories[categoryIndex]) {
-//
-//                 const mainCategory: DataViewCategoryColumn = dataViewCategorical.categories[categoryIndex];
-//
-//                 categoryValues = mainCategory.values;
-//
-//                 categoryFormatter = valueFormatter.create({
-//                     format: valueFormatter.getFormatStringByColumn(mainCategory.source),
-//                     value: categoryValues[0],
-//                     value2: categoryValues[categoryValues.length - 1]
-//                 });
-//
-//                 categoryIdentities = mainCategory.identity;
-//                 categoryObjects = mainCategory.objects;
-//
-//                 categoryQueryName = mainCategory.source
-//                     ? mainCategory.source.queryName
-//                     : null;
-//             }
-//             else {
-//                 categoryValues = [null];
-//
-//                 // creating default formatter for null value (to get the right string of empty value from the locale)
-//                 categoryFormatter = valueFormatter.createDefaultFormatter(null);
-//             }
-//
-//             let dataLabelsSettings: VisualDataLabelsSettings = dataLabelUtils.getDefaultPointLabelSettings();
-//
-//             // set initial value to category and value axes
-//             axesPropertiesUtils.setCategoryAxisProperties(categoryAxisProperties, dataViewMetadata.objects);
-//             axesPropertiesUtils.setValueAxisProperties(valueAxisProperties, dataViewMetadata.objects);
-//             formatPaneUtils.setPointsTransparencyProperty(this.pointsTransparencyProperties, dataViewMetadata.objects);
-//             formatPaneUtils.setSelectionSaveProperty(this.selectionSaveSettings, dataViewMetadata.objects);
-//             formatPaneUtils.setSelectionColorProperty(this.selectionColorSettings, dataViewMetadata.objects);
-//
-//             if (dataViewMetadata && dataViewMetadata.objects) {
-//                 const objects: DataViewObjects = dataViewMetadata.objects;
-//
-//                 defaultDataPointColor = DataViewObjects.getFillColor(
-//                     objects,
-//                     PropertiesOfCapabilities["dataPoint"]["defaultColor"]);
-//
-//                 showAllDataPoints = DataViewObjects.getValue<boolean>(
-//                     objects,
-//                     PropertiesOfCapabilities["dataPoint"]["showAllDataPoints"]);
-//
-//                 const labelsObj: DataViewObject = objects["categoryLabels"];
-//
-//                 if (labelsObj) {
-//                     dataLabelsSettings.show = (labelsObj["show"] !== undefined)
-//                         ? labelsObj["show"] as boolean
-//                         : dataLabelsSettings.show;
-//
-//                     dataLabelsSettings.fontSize = (labelsObj["fontSize"] !== undefined)
-//                         ? labelsObj["fontSize"] as number
-//                         : dataLabelsSettings.fontSize;
-//
-//                     dataLabelsSettings.fontFamily = (labelsObj["fontFamily"] !== undefined)
-//                         ? labelsObj["fontFamily"] as string
-//                         : dataLabelsSettings.fontFamily;
-//
-//                     if (labelsObj["color"] !== undefined) {
-//                         dataLabelsSettings.labelColor = DataViewObjects.getFillColor(
-//                             objects,
-//                             PropertiesOfCapabilities["categoryLabels"]["color"]);
-//                     }
-//
-//                     if (labelsObj["showBackground"] !== undefined) {
-//                         dataLabelsSettings.showBackground = DataViewObjects.getValue<boolean>(
-//                             objects,
-//                             PropertiesOfCapabilities["categoryLabels"]["showBackground"]);
-//                     }
-//
-//                     if (labelsObj["backgroundColor"] !== undefined) {
-//                         dataLabelsSettings.backgroundColor = DataViewObjects.getFillColor(
-//                             objects,
-//                             PropertiesOfCapabilities["categoryLabels"]["backgroundColor"]);
-//                     } else {
-//                         dataLabelsSettings.backgroundColor = Visual.DefaultLabelBackgroundColor;
-//                     }
-//
-//                     dataLabelsSettings.transparency = (labelsObj["transparency"] !== undefined)
-//                         ? labelsObj["transparency"] as number
-//                         : Visual.DefaultLabelBackgroundColorTransparency;
-//                 }
-//
-//                 axesPropertiesUtils.setXConstantLineProperties(xAxisConstantLineProperties, dataViewMetadata.objects);
-//                 axesPropertiesUtils.setYConstantLineProperties(yAxisConstantLineProperties, dataViewMetadata.objects);
-//
-//                 this.fillPoint = DataViewObjects.getValue<boolean>(
-//                     objects,
-//                     PropertiesOfCapabilities["fillPoint"]["show"],
-//                     Visual.DefaultFillPoint);
-//
-//                 this.shapesSize.size = DataViewObjects.getValue(
-//                     objects,
-//                     PropertiesOfCapabilities["shapes"]["size"],
-//                     Visual.DefaulShapesSize);
-//
-//                 legendUtils.setLegendProperties(this.legendProperties, dataViewMetadata.objects);
-//             }
-//
-//             const viewport: IViewport = {
-//                 height: options.viewport.height - this.legend.getMargins().height,
-//                 width: options.viewport.width - this.legend.getMargins().width
-//             };
-//
-//             // Update the size of our SVG element
-//             if (this.mainSvgElement) {
-//                 // viewport size is calculated wrong sometimes, which causing Play Axis bugs.
-//                 // We make it safe using max value between viewport and mainElement for height and width.
-//                 const mainElementHeight: number = (this.mainElement.node() as HTMLElement).clientHeight;
-//                 const mainElementWidth: number = (this.mainElement.node() as HTMLElement).clientWidth;
-//                 this.mainSvgElement
-//                     .attr("width", Math.max(mainElementWidth, viewport.width))
-//                     .attr("height", Math.max(mainElementHeight, viewport.height));
-//             }
-//
-//             // Set up margins for our visual
-//             const visualMargin: IMargin = { top: 8, bottom: 10, left: 10, right: 10 };
-//
-//             // Set up sizes for axes
-//             const axesSize: IAxesSize = { xAxisHeight: 15, yAxisWidth: 10 };
-//
-//             // Build legend
-//             const legendData = legendUtils.buildLegendData(dataValues, this.host, this.legendProperties, dataValueSource, categories, categoryIndex, hasDynamicSeries);
-//             legendUtils.renderLegend(this.legend, this.mainSvgElement, options.viewport, legendData, this.legendProperties, this.legendElement);
-//
-//
-//             // Calculate the resulting size of visual
-//             let visualSize: ISize = {
-//                 width: options.viewport.width
-//                     - visualMargin.left
-//                     - visualMargin.right
-//                     - axesSize.yAxisWidth
-//                     - this.legend.getMargins().width,
-//                 height: options.viewport.height
-//                     - visualMargin.top
-//                     - visualMargin.bottom
-//                     - axesSize.xAxisHeight
-//                     - this.legend.getMargins().height
-//                     - this.playAxis.getHeight()
-//             };
-//
+
+            if (dataViewCategorical &&
+                dataViewCategorical.categories
+                && dataViewCategorical.categories.length > 0
+                && dataViewCategorical.categories[categoryIndex]) {
+
+                const mainCategory = dataViewCategorical.categories[categoryIndex];
+
+                categoryValues = mainCategory.values;
+
+                categoryFormatter = valueFormatter.create({
+                    format: valueFormatter.getFormatStringByColumn(<any>mainCategory.source),
+                    value: categoryValues[0],
+                    value2: categoryValues[categoryValues.length - 1],
+                });
+
+                categoryIdentities = mainCategory.identity;
+                categoryObjects = mainCategory.objects;
+                categoryQueryName = mainCategory.source.queryName;
+            } else {
+                categoryValues = [null];
+
+                // creating default formatter for null value (to get the right string of empty value from the locale)
+                categoryFormatter = valueFormatter.createDefaultFormatter(<any>null);
+            }
+
+            const dataLabelsSettings = dataLabelUtils.getDefaultPointLabelSettings() as VisualDataLabelsSettings;
+
+            // set initial value to category and value axes
+            setCategoryAxisProperties(categoryAxisProperties, dataViewMetadata.objects);
+            setValueAxisProperties(valueAxisProperties, dataViewMetadata.objects);
+            setPointsTransparencyProperty(this.pointsTransparencyProperties, dataViewMetadata.objects);
+            setSelectionSaveProperty(this.selectionSaveSettings, dataViewMetadata.objects);
+            setSelectionColorProperty(this.selectionColorSettings, dataViewMetadata.objects);
+
+            if (dataViewMetadata && dataViewMetadata.objects) {
+                const objects = dataViewMetadata.objects;
+
+                defaultDataPointColor = dataViewObjects.getFillColor(
+                    objects,
+                    PropertiesOfCapabilities['dataPoint']['defaultColor']);
+
+                showAllDataPoints = dataViewObjects.getValue<boolean>(
+                    objects,
+                    PropertiesOfCapabilities['dataPoint']['showAllDataPoints']);
+
+                const labelsObj: DataViewObject = objects['categoryLabels'];
+
+                if (labelsObj) {
+                    dataLabelsSettings.show = (labelsObj['show'] !== undefined)
+                        ? labelsObj['show'] as boolean
+                        : dataLabelsSettings.show;
+
+                    dataLabelsSettings.fontSize = (labelsObj['fontSize'] !== undefined)
+                        ? labelsObj['fontSize'] as number
+                        : dataLabelsSettings.fontSize;
+
+                    dataLabelsSettings.fontFamily = (labelsObj['fontFamily'] !== undefined)
+                        ? labelsObj['fontFamily'] as string
+                        : dataLabelsSettings.fontFamily;
+
+                    if (labelsObj['color'] !== undefined) {
+                        dataLabelsSettings.labelColor = dataViewObjects.getFillColor(
+                            objects,
+                            PropertiesOfCapabilities['categoryLabels']['color']);
+                    }
+
+                    if (labelsObj['showBackground'] !== undefined) {
+                        dataLabelsSettings.showBackground = dataViewObjects.getValue<boolean>(
+                            objects,
+                            PropertiesOfCapabilities['categoryLabels']['showBackground']);
+                    }
+
+                    if (labelsObj['backgroundColor'] !== undefined) {
+                        dataLabelsSettings.backgroundColor = dataViewObjects.getFillColor(
+                            objects,
+                            PropertiesOfCapabilities['categoryLabels']['backgroundColor']);
+                    } else {
+                        dataLabelsSettings.backgroundColor = Visual.DefaultLabelBackgroundColor;
+                    }
+
+                    dataLabelsSettings.transparency = (labelsObj['transparency'] !== undefined)
+                        ? labelsObj['transparency'] as number
+                        : Visual.DefaultLabelBackgroundColorTransparency;
+                }
+
+                setXConstantLineProperties(xAxisConstantLineProperties, dataViewMetadata.objects);
+                setYConstantLineProperties(yAxisConstantLineProperties, dataViewMetadata.objects);
+
+                this.fillPoint = dataViewObjects.getValue<boolean>(
+                    objects,
+                    PropertiesOfCapabilities['fillPoint']['show'],
+                    Visual.DefaultFillPoint);
+
+                this.shapesSize.size = dataViewObjects.getValue(
+                    objects,
+                    PropertiesOfCapabilities['shapes']['size'],
+                    Visual.DefaulShapesSize);
+
+                setLegendProperties(this.legendProperties, dataViewMetadata.objects);
+            }
+
+            const viewport: IViewport = {
+                height: options.viewport.height - this.legend.getMargins().height,
+                width: options.viewport.width - this.legend.getMargins().width,
+            };
+
+            // // Update the size of our SVG element
+            // if (this.mainSvgElement) {
+            // viewport size is calculated wrong sometimes, which causing Play Axis bugs.
+            // We make it safe using max value between viewport and mainElement for height and width.
+            const mainElementHeight: number = (this.mainElement.node() as HTMLElement).clientHeight;
+            const mainElementWidth: number = (this.mainElement.node() as HTMLElement).clientWidth;
+            this.mainSvgElement
+                .attr('width', Math.max(mainElementWidth, viewport.width))
+                .attr('height', Math.max(mainElementHeight, viewport.height));
+            // }
+
+            // Set up margins for our visual
+            const visualMargin: IMargin = {top: 8, bottom: 10, left: 10, right: 10};
+
+            // Set up sizes for axes
+            const axesSize: IAxesSize = {xAxisHeight: 15, yAxisWidth: 10};
+
+            // Build legend
+            const legendData = buildLegendData(dataValues, this.host, this.legendProperties, dataValueSource, categories, categoryIndex, hasDynamicSeries);
+            console.log(legendData);
+            // renderLegend(this.legend, this.mainSvgElement, options.viewport, legendData, this.legendProperties, this.legendElement);
+
+            // Calculate the resulting size of visual
+            // const visualSize: ISize = {
+            //     width: options.viewport.width
+            //         - visualMargin.left
+            //         - visualMargin.right
+            //         - axesSize.yAxisWidth
+            //         - this.legend.getMargins().width,
+            //     height: options.viewport.height
+            //         - visualMargin.top
+            //         - visualMargin.bottom
+            //         - axesSize.xAxisHeight
+            //         - this.legend.getMargins().height
+            //         - this.playAxis.getHeight(),
+            // };
+
 //             const playAxisCategory: DataViewCategoryColumn = categories && categories[metadata.idx.playAxis];
 //             // Parse data from update options
 //             let dataPoints: VisualDataPoint[];
@@ -669,7 +701,7 @@ export class Visual implements IVisual {
             console.log('=== UPDATE END ===');
         } catch (e) {
             console.error('=== UPDATE ERROR ===');
-            console.log(e);
+            console.error(e);
             throw e;
         }
     }
@@ -1889,11 +1921,7 @@ export class Visual implements IVisual {
 //                 .domain([minRange, maxRange])
 //                 .range([Visual.minBubbleSize, Visual.maxBubbleSize]);
 //         }
-//
-//         private static parseSettings(dataView: DataView): VisualSettings {
-//             return VisualSettings.parse(dataView) as VisualSettings;
-//         }
-//
+
     public clearVisual(viewport: IViewport): void {
         this.legend.reset();
         this.legend.drawLegend({dataPoints: []}, viewport);
