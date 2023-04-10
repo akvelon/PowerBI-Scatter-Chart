@@ -2,11 +2,11 @@
  * Imports external styles.
  * We compile it as a less file in order to wrap the external CSS rules.
  */
- @import (less) "node_modules/powerbi-visuals-utils-interactivityutils/lib/index.css";
- @import (less) "node_modules/powerbi-visuals-utils-formattingutils/lib/index.css";
- @import (less) "node_modules/powerbi-visuals-utils-chartutils/lib/index.css";
- @import (less) "node_modules/jquery-ui-slider/jquery-ui.min.css";
- @import (less) "node_modules/jquery-ui-slider/jquery-ui.theme.min.css";
+ @import (less) "~powerbi-visuals-utils-interactivityutils/lib/index.css";
+ @import (less) "~powerbi-visuals-utils-formattingutils/lib/index.css";
+ @import (less) "~powerbi-visuals-utils-chartutils/lib/index.css";
+ @import (less) "~jquery-ui-slider/jquery-ui.min.css";
+ @import (less) "~jquery-ui-slider/jquery-ui.theme.min.css";
 
 @enhancedScatterChartColor: #777777;
 .lasso-scatter-chart-svg {
@@ -58,7 +58,7 @@ p {
     em {
         background: yellow;
         padding: 5px;
-        
+
     }
 }
 
@@ -117,7 +117,6 @@ p {
     overflow: hidden;
     border-radius: 13px;
     border: 1px solid #666;
-    margin: 6px 10px;
     position: absolute;
     cursor: pointer;
     margin: 0;
