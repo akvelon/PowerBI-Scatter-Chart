@@ -9,10 +9,18 @@ import DataViewValueColumns = powerbi.DataViewValueColumns;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
 import DataViewCategoryColumn = powerbi.DataViewCategoryColumn;
-import {LegendData, LegendDataPoint} from 'powerbi-visuals-utils-chartutils/lib/legend/legendInterfaces';
+import {
+    ILegend,
+    LegendData,
+    LegendDataPoint, LegendPosition,
+    legendProps,
+} from 'powerbi-visuals-utils-chartutils/lib/legend/legendInterfaces';
 import {ColorHelper} from 'powerbi-visuals-utils-colorutils';
 import DataViewValueColumnGroup = powerbi.DataViewValueColumnGroup;
 import {valueFormatter} from 'powerbi-visuals-utils-formattingutils';
+import {Selection} from 'd3-selection';
+import IViewport = powerbi.IViewport;
+import {legendData as legendDataModule, legend as legendModule} from 'powerbi-visuals-utils-chartutils';
 
 export const MinAmountOfDataPointsInTheLegend: number = 1;
 export const LegendLabelFontSizeDefault: number = 9;
@@ -83,94 +91,94 @@ export function buildLegendData(
     };
 }
 
-// export function renderLegend(
-//     visualLegend: ILegend,
-//     svg: d3.Selection<SVGElement>,
-//     viewport: IViewport,
-//     layerLegendData: LegendData,
-//     legendObjectProperties: DataViewObject,
-//     legendElement): void {
-//
-//     const legendData: LegendData = {
-//         title: "",
-//         dataPoints: []
-//     };
-//
-//     const legend: ILegend = visualLegend;
-//
-//     const svgLegendElement = legendElement[0].parentNode;
-//
-//     if (layerLegendData) {
-//         legendData.title = layerLegendData.title || "";
-//
-//         legendData.dataPoints = legendData.dataPoints.concat(layerLegendData.dataPoints || []);
-//
-//         legendData.fontSize = this.legendLabelFontSize
-//             ? this.legendLabelFontSize
-//             : LegendLabelFontSizeDefault;
-//
-//         legendData.grouped = !!layerLegendData.grouped;
-//     }
-//
-//     const legendProperties: DataViewObject = legendObjectProperties;
-//
-//     if (legendProperties) {
-//         legendDataModule.update(legendData, legendProperties);
-//
-//         const position: string = legendProperties[legendProps.position] as string;
-//
-//         if (position) {
-//             legend.changeOrientation(LegendPosition[position]);
-//         }
-//     }
-//     else {
-//         legend.changeOrientation(LegendPosition.Top);
-//     }
-//
-//     if (legendData.dataPoints.length === MinAmountOfDataPointsInTheLegend
-//         && !legendData.grouped) {
-//         // legendData.dataPoints = [];
-//     }
-//
-//     legend.drawLegend(legendData, {
-//         height: viewport.height,
-//         width: viewport.width
-//     });
-//
-//     legendModule.positionChartArea(svg, legend);
-//
-//     const legendGroup = legendElement[0][0];
-//     /* Chromium 29.0.1504 doesn't support 'children' prop on SVG elements so we use 'childNodes' in this case.
-//         This Chromium version is used for generating PDF and images on the backend.
-//         */
-//     let legendItems: Array<any> = [].slice.call('children' in legendGroup ? legendGroup.children : legendGroup.childNodes);
-//
-//     legendItems = legendItems.filter(item => (item.classList.value === "legendItem" || item.classList.value === "legendTitle"));
-//
-//     if (legendItems && legendItems.length > 0) {
-//         let offset: number = 0;
-//
-//         legendItems.forEach((item, i, arr) => {
-//             item.style.fontFamily = DefaultFontFamily;
-//             let oldWidth = item.getBoundingClientRect().width;
-//             item.style.fontFamily = <string>legendObjectProperties.fontFamily || DefaultFontFamily;
-//             let newWidth = item.getBoundingClientRect().width;
-//
-//             let orientation = legend.getOrientation();
-//
-//             if (orientation === LegendPosition.Right ||
-//                 orientation === LegendPosition.RightCenter ||
-//                 orientation === LegendPosition.Left ||
-//                 orientation === LegendPosition.LeftCenter) {
-//                 item.style.transform = `translateX(${0}px)`;
-//                 // TODO: add processing for left right position
-//             } else {
-//                 item.style.transform = `translateX(${offset}px)`;
-//             }
-//             offset += newWidth - oldWidth;
-//         });
-//     }
-// }
+export function renderLegend(
+    legend: ILegend,
+    mainSvgElement: Selection<SVGSVGElement, unknown, null, undefined>,
+    viewport: IViewport,
+    layerLegendData: LegendData,
+    legendObjectProperties: DataViewObject,
+    svgLegendElement: Selection<SVGSVGElement, unknown, null, undefined>): void {
+
+    const legendData: LegendData = {
+        title: '',
+        dataPoints: [],
+    };
+
+    // TODO Remove
+    // const svgLegendElement = legendElement[0].parentNode;
+
+    if (layerLegendData) {
+        legendData.title = layerLegendData.title || '';
+
+        legendData.dataPoints = legendData.dataPoints.concat(layerLegendData.dataPoints || []);
+
+        legendData.fontSize = this.legendLabelFontSize
+            ? this.legendLabelFontSize
+            : LegendLabelFontSizeDefault;
+
+        legendData.grouped = !!layerLegendData.grouped;
+    }
+
+    // const legendProperties: DataViewObject = legendObjectProperties;
+    //
+    // if (legendProperties) {
+    //     legendDataModule.update(legendData, legendProperties);
+    //
+    //     const position: string = legendProperties[legendProps.position] as string;
+    //
+    //     if (position) {
+    //         legend.changeOrientation(LegendPosition[position]);
+    //     }
+    // } else {
+    //     legend.changeOrientation(LegendPosition.Top);
+    // }
+
+    // TODO Remove
+    // if (legendData.dataPoints.length === MinAmountOfDataPointsInTheLegend
+    //     && !legendData.grouped) {
+    //     // legendData.dataPoints = [];
+    // }
+
+    // legend.drawLegend(legendData, {
+    //     height: viewport.height,
+    //     width: viewport.width,
+    // });
+
+    // legendModule.positionChartArea(mainSvgElement, legend);
+    //
+    // const legendGroup = svgLegendElement.select('.legendGroup').node();
+    // /* Chromium 29.0.1504 doesn't support 'children' prop on SVG elements so we use 'childNodes' in this case.
+    //     This Chromium version is used for generating PDF and images on the backend.
+    //     */
+    // const legendItems: Array<any> = [].slice.call('children' in legendGroup! ? legendGroup.children : (<any>legendGroup).childNodes);
+    // console.log(legendItems);
+
+    // legendItems = legendItems.filter(item => (item.classList.value === "legendItem" || item.classList.value === "legendTitle"));
+    //
+    // if (legendItems && legendItems.length > 0) {
+    //     let offset: number = 0;
+    //
+    //     legendItems.forEach((item, i, arr) => {
+    //         item.style.fontFamily = DefaultFontFamily;
+    //         const oldWidth = item.getBoundingClientRect().width;
+    //         item.style.fontFamily = <string>legendObjectProperties.fontFamily || DefaultFontFamily;
+    //         const newWidth = item.getBoundingClientRect().width;
+    //
+    //         const orientation = legend.getOrientation();
+    //
+    //         if (orientation === LegendPosition.Right ||
+    //             orientation === LegendPosition.RightCenter ||
+    //             orientation === LegendPosition.Left ||
+    //             orientation === LegendPosition.LeftCenter) {
+    //             item.style.transform = `translateX(${0}px)`;
+    //             // TODO: add processing for left right position
+    //         } else {
+    //             item.style.transform = `translateX(${offset}px)`;
+    //         }
+    //         offset += newWidth - oldWidth;
+    //     });
+    // }
+}
 
 export function getLegendProperties(
     dataViewMetadata: DataViewMetadata,

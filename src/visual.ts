@@ -61,7 +61,7 @@ import {
     getSelectionSaveSettings,
     getShapesSizeProperty, setPointsTransparencyProperty, setSelectionColorProperty, setSelectionSaveProperty,
 } from './formatPaneUtils';
-import {buildLegendData, getLegendProperties, setLegendProperties} from './legendUtils';
+import {buildLegendData, getLegendProperties, renderLegend, setLegendProperties} from './legendUtils';
 import PrimitiveValue = powerbi.PrimitiveValue;
 import {valueFormatter} from 'powerbi-visuals-utils-formattingutils';
 import {IValueFormatter} from 'powerbi-visuals-utils-formattingutils/lib/src/valueFormatter';
@@ -130,6 +130,7 @@ export class Visual implements IVisual {
 
     private readonly mainElement: Selection<HTMLElement, unknown, null, undefined>;
     private readonly mainSvgElement: Selection<SVGSVGElement, unknown, null, undefined>;
+    private readonly legendElement: Selection<SVGSVGElement, unknown, null, undefined>;
     private readonly visualSvgGroup: Selection<SVGGElement, unknown, null, undefined>;
     private readonly visualSvgGroupMarkers: Selection<SVGSVGElement, unknown, null, undefined>;
     private readonly labelGraphicsContext: Selection<SVGGElement, unknown, null, undefined>;
@@ -165,9 +166,6 @@ export class Visual implements IVisual {
 
 //         private labelBackgroundGraphicsContext: d3.selection.Update<any>;
 //         private scatterSelect: d3.Selection<any>;
-
-
-//         private legendElement: d3.Selection<SVGElement>;
 
 
 //         private isSelectionRestored: boolean = false;
@@ -232,7 +230,7 @@ export class Visual implements IVisual {
                 true,
                 LegendPosition.Top);
 
-//             this.legendElement = mainElement.selectAll("svg.legend").selectAll("g");
+            this.legendElement = this.mainElement.select<SVGSVGElement>('svg.legend');
 
             this.tooltipServiceWrapper = createTooltipServiceWrapper(
                 this.host.tooltipService,
@@ -456,8 +454,8 @@ export class Visual implements IVisual {
 
             // Build legend
             const legendData = buildLegendData(dataValues, this.host, this.legendProperties, dataValueSource, categories, categoryIndex, hasDynamicSeries);
-            console.log(legendData);
-            // renderLegend(this.legend, this.mainSvgElement, options.viewport, legendData, this.legendProperties, this.legendElement);
+            // console.log(legendData);
+            renderLegend(this.legend, this.mainSvgElement, options.viewport, legendData, this.legendProperties, this.legendElement);
 
             // Calculate the resulting size of visual
             // const visualSize: ISize = {
