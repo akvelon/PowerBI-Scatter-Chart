@@ -112,26 +112,26 @@ export function renderLegend(
 
         legendData.dataPoints = legendData.dataPoints.concat(layerLegendData.dataPoints || []);
 
-        legendData.fontSize = this.legendLabelFontSize
+        legendData.fontSize = this?.legendLabelFontSize
             ? this.legendLabelFontSize
             : LegendLabelFontSizeDefault;
 
         legendData.grouped = !!layerLegendData.grouped;
     }
 
-    // const legendProperties: DataViewObject = legendObjectProperties;
-    //
-    // if (legendProperties) {
-    //     legendDataModule.update(legendData, legendProperties);
-    //
-    //     const position: string = legendProperties[legendProps.position] as string;
-    //
-    //     if (position) {
-    //         legend.changeOrientation(LegendPosition[position]);
-    //     }
-    // } else {
-    //     legend.changeOrientation(LegendPosition.Top);
-    // }
+    const legendProperties: DataViewObject = legendObjectProperties;
+
+    if (legendProperties) {
+        legendDataModule.update(legendData, legendProperties);
+
+        const position: string = legendProperties[legendProps.position] as string;
+
+        if (position) {
+            legend.changeOrientation(LegendPosition[position]);
+        }
+    } else {
+        legend.changeOrientation(LegendPosition.Top);
+    }
 
     // TODO Remove
     // if (legendData.dataPoints.length === MinAmountOfDataPointsInTheLegend
@@ -139,45 +139,41 @@ export function renderLegend(
     //     // legendData.dataPoints = [];
     // }
 
-    // legend.drawLegend(legendData, {
-    //     height: viewport.height,
-    //     width: viewport.width,
-    // });
+    legend.drawLegend(legendData, {
+        height: viewport.height,
+        width: viewport.width,
+    });
 
-    // legendModule.positionChartArea(mainSvgElement, legend);
-    //
-    // const legendGroup = svgLegendElement.select('.legendGroup').node();
-    // /* Chromium 29.0.1504 doesn't support 'children' prop on SVG elements so we use 'childNodes' in this case.
-    //     This Chromium version is used for generating PDF and images on the backend.
-    //     */
-    // const legendItems: Array<any> = [].slice.call('children' in legendGroup! ? legendGroup.children : (<any>legendGroup).childNodes);
-    // console.log(legendItems);
+    legendModule.positionChartArea(mainSvgElement, legend);
 
-    // legendItems = legendItems.filter(item => (item.classList.value === "legendItem" || item.classList.value === "legendTitle"));
-    //
-    // if (legendItems && legendItems.length > 0) {
-    //     let offset: number = 0;
-    //
-    //     legendItems.forEach((item, i, arr) => {
-    //         item.style.fontFamily = DefaultFontFamily;
-    //         const oldWidth = item.getBoundingClientRect().width;
-    //         item.style.fontFamily = <string>legendObjectProperties.fontFamily || DefaultFontFamily;
-    //         const newWidth = item.getBoundingClientRect().width;
-    //
-    //         const orientation = legend.getOrientation();
-    //
-    //         if (orientation === LegendPosition.Right ||
-    //             orientation === LegendPosition.RightCenter ||
-    //             orientation === LegendPosition.Left ||
-    //             orientation === LegendPosition.LeftCenter) {
-    //             item.style.transform = `translateX(${0}px)`;
-    //             // TODO: add processing for left right position
-    //         } else {
-    //             item.style.transform = `translateX(${offset}px)`;
-    //         }
-    //         offset += newWidth - oldWidth;
-    //     });
-    // }
+    // TODO Remove
+    // const legendGroup = svgLegendElement.select('#legendGroup').node();
+
+    const legendItems = svgLegendElement.select<SVGGElement>('#legendGroup').selectAll<SVGElement, unknown>('.legendItem, .legendTitle').nodes();
+
+    if (legendItems && legendItems.length > 0) {
+        let offset: number = 0;
+
+        legendItems.forEach((item, i, arr) => {
+            item.style.fontFamily = DefaultFontFamily;
+            const oldWidth = item.getBoundingClientRect().width;
+            item.style.fontFamily = <string>legendObjectProperties.fontFamily || DefaultFontFamily;
+            const newWidth = item.getBoundingClientRect().width;
+
+            const orientation = legend.getOrientation();
+
+            if (orientation === LegendPosition.Right ||
+                orientation === LegendPosition.RightCenter ||
+                orientation === LegendPosition.Left ||
+                orientation === LegendPosition.LeftCenter) {
+                item.style.transform = `translateX(${0}px)`;
+                // TODO: add processing for left right position
+            } else {
+                item.style.transform = `translateX(${offset}px)`;
+            }
+            offset += newWidth - oldWidth;
+        });
+    }
 }
 
 export function getLegendProperties(
