@@ -61,9 +61,9 @@ export interface IAxes {
 
 
 export interface VisualRadiusData {
-    sizeMeasure: DataViewValueColumn;
+    sizeMeasure: DataViewValueColumn | null; // no null
     index: number;
-    value: PrimitiveValue;
+    value: PrimitiveValue | null; // no null
 }
 
 export interface VisualDataLabelsSettings extends PointDataLabelsSettings {
@@ -98,30 +98,30 @@ export interface VisualDataLabelsSettings extends PointDataLabelsSettings {
 // }
 
 export interface VisualDataPoint extends SelectableDataPoint, TooltipEnabledDataPoint {
-    // x: PrimitiveValue;
-    // y: PrimitiveValue;
-    // size: number | ISize;
-    // radius: VisualRadiusData;
+    x: number | null; // PrimitiveValue;
+    y: number | null; // PrimitiveValue;
+    size: number | ISize | null;
+    radius: VisualRadiusData;
     fill?: string;
     // colorFill?: string;
-    // columnGroup: DataViewValueColumnGroup;
+    columnGroup: DataViewValueColumnGroup;
     formattedCategory?: () => string;
     // tooltipInfo: VisualTooltipDataItem[];
-    // labelFill?: string;
-    // labelFontSize: any;
-    // labelFontFamily: string;
-    // angleRange?: Array<number>;
-    // labelAnglePosition?: number;
-    // equalDataPointLabelsCount?: VisualLabelsCount;
-    // xStart?: number;
-    // xEnd?: number;
-    // yStart?: number;
-    // yEnd?: number;
+    labelFill?: string;
+    labelFontSize: any;
+    labelFontFamily: string;
+    angleRange?: [number, number];
+    labelAnglePosition?: number;
+    equalDataPointLabelsCount?: VisualLabelsCount;
+    xStart?: number | null; // no null
+    xEnd?: number | null; // no null
+    yStart?: number | null; // no null
+    yEnd?: number | null; // no null
     // labelX?: number;
     // labelY?: number;
     // index?: number;
     // entirePath?: VisualDataPoint[];
-    // playAxisValue?: PrimitiveValue;
+    playAxisValue?: PrimitiveValue;
     // pathDistances?: number[];
     // pathElement?: SVGElement;
     // isShown?: boolean;

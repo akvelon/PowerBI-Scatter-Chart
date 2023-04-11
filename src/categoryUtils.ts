@@ -65,7 +65,7 @@ export function getCategories(dataView: DataView): ICategoryData | undefined {
     return data;
 }
 
-export function getDefinedNumberByCategoryId(column: DataViewValueColumn, index: number): number | null {
+export function getDefinedNumberByCategoryId(column: DataViewValueColumn | null, index: number): number | null {
     return column
     && column.values
     && !(column.values[index] === null)
@@ -75,7 +75,7 @@ export function getDefinedNumberByCategoryId(column: DataViewValueColumn, index:
 }
 
 export function getValueFromDataViewValueColumnById(
-    dataViewValueColumn: DataViewCategoryColumn | DataViewValueColumn,
+    dataViewValueColumn: DataViewCategoryColumn | DataViewValueColumn | null,
     index: number): DataViewObjects | null {
 
     return dataViewValueColumn && dataViewValueColumn.objects

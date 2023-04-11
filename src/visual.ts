@@ -10,18 +10,16 @@ import {
 } from 'powerbi-visuals-utils-interactivityutils/lib/interactivityBaseService';
 import {VisualBehavior} from './visualBehavior';
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
-
-import '../style/visual.less';
 import {
-    createInteractivitySelectionService,
+    createInteractivitySelectionService, SelectableDataPoint,
 } from 'powerbi-visuals-utils-interactivityutils/lib/interactivitySelectionService';
 import {
-    IAxesSize,
+    IAxesSize, ICategoryData,
     IMargin,
     VisualData,
     VisualDataLabelsSettings,
     VisualDataPoint,
-    VisualDataViewObject,
+    VisualDataViewObject, VisualMeasureMetadata,
 } from './visualInterfaces';
 import {createLegend} from 'powerbi-visuals-utils-chartutils/lib/legend/legend';
 import {ILegend, LegendPosition} from 'powerbi-visuals-utils-chartutils/lib/legend/legendInterfaces';
@@ -43,7 +41,7 @@ import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnume
 import {ColorHelper} from 'powerbi-visuals-utils-colorutils';
 import IVisualSelectionId = powerbi.visuals.ISelectionId;
 import {VisualSettings} from './settings';
-import {getCategories} from './categoryUtils';
+import {getCategories, getDefinedNumberByCategoryId, getValueFromDataViewValueColumnById} from './categoryUtils';
 import {getMetadata} from './metadataUtils';
 import {
     getCategoryAxisProperties,
@@ -69,6 +67,21 @@ import CustomVisualOpaqueIdentity = powerbi.visuals.CustomVisualOpaqueIdentity;
 import DataViewObjects = powerbi.DataViewObjects;
 import {dataViewObjects} from 'powerbi-visuals-utils-dataviewutils';
 import {PropertiesOfCapabilities} from './properties';
+import {ISize} from 'powerbi-visuals-utils-svgutils/lib/shapes/shapesInterfaces';
+import VisualUpdateType = powerbi.VisualUpdateType;
+import DataViewValueColumnGroup = powerbi.DataViewValueColumnGroup;
+import DataViewCategoryColumn = powerbi.DataViewCategoryColumn;
+import DataViewCategorical = powerbi.DataViewCategorical;
+import DataViewMetadata = powerbi.DataViewMetadata;
+import DataViewValueColumns = powerbi.DataViewValueColumns;
+import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
+import {pixelConverter as PixelConverter} from 'powerbi-visuals-utils-typeutils';
+import {getMeasureValue, getObjectPropertiesLength} from './utils';
+import {hasRoleInValueColumn} from 'powerbi-visuals-utils-dataviewutils/lib/dataRoleHelper';
+import {createTooltipInfo, TooltipSeriesDataItem} from './tooltipBuilder';
+
+import '../style/visual.less';
+import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 
 class Selectors {
     static readonly MainSvg = createClassAndSelector('lasso-scatter-chart-svg');
@@ -139,7 +152,7 @@ export class Visual implements IVisual {
     private readonly axisConstantLinesGroup: Selection<SVGGElement, unknown, null, undefined>;
     private readonly clearCatcher: Selection<any, any, any, any>;
     private readonly axisGraphicsContext: Selection<SVGGElement, unknown, null, undefined>;
-    private readonly interactivityService: IInteractivityService<VisualDataPoint>;
+    private readonly interactivityService: IInteractivityService<SelectableDataPoint>;
     private readonly colorPalette: ISandboxExtendedColorPalette;
     private readonly legend: ILegend;
     private readonly host: IVisualHost;
@@ -271,12 +284,15 @@ export class Visual implements IVisual {
             this.dataView = dataView;
 
             // Parse settings
+            console.log('parse settings');
             this.settings = VisualSettings.parse<VisualSettings>(dataView);
 
             // Get categories for legend
+            console.log('get categories');
             const categoryData = getCategories(dataView);
 
             // Get metadata
+            console.log('get metadata');
             const grouped = dataView.categorical?.values?.grouped();
             const source = dataView.metadata.columns[0];
 
@@ -287,11 +303,13 @@ export class Visual implements IVisual {
             const dataViewMetadata = dataView.metadata;
             const dataValues = dataViewCategorical?.values;
             const dataValueSource = dataValues?.source;
-            if (!dataValues || !dataValueSource) {
+
+            console.log(dataValues);
+            console.log(dataValueSource);
+            if (!dataValues) {
                 // Should not happen.
                 return;
             }
-
 
             const hasDynamicSeries = !!dataValues.source;
 
@@ -306,6 +324,7 @@ export class Visual implements IVisual {
             let showAllDataPoints: boolean = true;
             let categoryFormatter: IValueFormatter;
 
+            console.log('get axis properties');
             this.categoryAxisProperties = getCategoryAxisProperties(dataViewMetadata, true);
             this.valueAxisProperties = getValueAxisProperties(dataViewMetadata, true);
             this.xAxisConstantLineProperties = getXConstantLineProperties(dataViewMetadata);
@@ -435,8 +454,10 @@ export class Visual implements IVisual {
                 width: options.viewport.width - this.legend.getMargins().width,
             };
 
+            // TODO Remove
             // // Update the size of our SVG element
             // if (this.mainSvgElement) {
+
             // viewport size is calculated wrong sometimes, which causing Play Axis bugs.
             // We make it safe using max value between viewport and mainElement for height and width.
             const mainElementHeight: number = (this.mainElement.node() as HTMLElement).clientHeight;
@@ -444,6 +465,8 @@ export class Visual implements IVisual {
             this.mainSvgElement
                 .attr('width', Math.max(mainElementWidth, viewport.width))
                 .attr('height', Math.max(mainElementHeight, viewport.height));
+
+            // TODO Remove
             // }
 
             // Set up margins for our visual
@@ -454,49 +477,52 @@ export class Visual implements IVisual {
 
             // Build legend
             const legendData = buildLegendData(dataValues, this.host, this.legendProperties, dataValueSource, categories, categoryIndex, hasDynamicSeries);
-            // console.log(legendData);
             renderLegend(this.legend, this.mainSvgElement, options.viewport, legendData, this.legendProperties, this.legendElement);
 
             // Calculate the resulting size of visual
-            // const visualSize: ISize = {
-            //     width: options.viewport.width
-            //         - visualMargin.left
-            //         - visualMargin.right
-            //         - axesSize.yAxisWidth
-            //         - this.legend.getMargins().width,
-            //     height: options.viewport.height
-            //         - visualMargin.top
-            //         - visualMargin.bottom
-            //         - axesSize.xAxisHeight
-            //         - this.legend.getMargins().height
-            //         - this.playAxis.getHeight(),
-            // };
+            const visualSize: ISize = {
+                width: options.viewport.width
+                    - visualMargin.left
+                    - visualMargin.right
+                    - axesSize.yAxisWidth
+                    - this.legend.getMargins().width,
+                height: options.viewport.height
+                    - visualMargin.top
+                    - visualMargin.bottom
+                    - axesSize.xAxisHeight
+                    - this.legend.getMargins().height
+                    - this.playAxis.getHeight(),
+            };
 
-//             const playAxisCategory: DataViewCategoryColumn = categories && categories[metadata.idx.playAxis];
-//             // Parse data from update options
-//             let dataPoints: VisualDataPoint[];
-//             if (options.type === VisualUpdateType.Resize || options.type === Visual.ResizeEndCode) {
-//                 dataPoints = this.data.dataPoints;
-//             } else {
-//                 dataPoints = this.transform(this.host,
-//                     visualSize,
-//                     dataView,
-//                     grouped,
-//                     categories,
-//                     categoryValues,
-//                     playAxisCategory,
-//                     dataViewCategorical,
-//                     dataViewMetadata,
-//                     dataValues,
-//                     categoryData,
-//                     metadata,
-//                     defaultDataPointColor,
-//                     hasDynamicSeries,
-//                     categoryFormatter,
-//                     dataValueSource,
-//                     dataLabelsSettings);
-//             }
-//
+            const playAxisCategory = categories && typeof metadata.idx.playAxis === 'number'
+                ? categories[metadata.idx.playAxis]
+                : null;
+
+            // Parse data from update options
+            let dataPoints: VisualDataPoint[];
+            if (options.type === VisualUpdateType.Resize || options.type === Visual.ResizeEndCode) {
+                dataPoints = this.data?.dataPoints ?? [];
+            } else {
+                dataPoints = this.transform(
+                    this.host,
+                    visualSize,
+                    dataView,
+                    grouped ?? [],
+                    categories,
+                    categoryValues,
+                    playAxisCategory,
+                    dataViewCategorical,
+                    dataViewMetadata,
+                    dataValues,
+                    categoryData,
+                    metadata,
+                    defaultDataPointColor,
+                    hasDynamicSeries,
+                    categoryFormatter,
+                    dataValueSource,
+                    dataLabelsSettings);
+            }
+
 //             // Set width and height of visual to SVG group
 //             this.visualSvgGroupMarkers
 //                 .attr("width", visualSize.width)
@@ -561,7 +587,7 @@ export class Visual implements IVisual {
 //             let axesOptions = { categoryAxisProperties, valueAxisProperties, xAxisConstantLine: xAxisConstantLineProperties, yAxisConstantLine: yAxisConstantLineProperties };
 //
 //             const axes = this.createD3Axes(visualSize, dataPoints, metadata.cols, axesOptions);
-//
+
 //             this.yAxisIsCategorical = axes.y.isCategoryAxis;
 //
 //             this.addUnitTypeToAxisLabel(axes.x, axes.y);
@@ -593,7 +619,7 @@ export class Visual implements IVisual {
 //                 dataLabelsSettings
 //             };
 //
-//             this.data = data;
+            // this.data = data;
 //             this.renderAxes(data);
 //
 //             let ytickText = this.yAxisSvgGroup.selectAll("text")[0];
@@ -704,301 +730,294 @@ export class Visual implements IVisual {
         }
     }
 
-//         private transform(
-//             visualHost: IVisualHost,
-//             visualSize: ISize,
-//             dataView: DataView,
-//             grouped: DataViewValueColumnGroup[],
-//             categories: DataViewCategoryColumn[],
-//             categoriesValues: PrimitiveValue[],
-//             playAxisCategory: DataViewCategoryColumn,
-//             dataViewCategorical: DataViewCategorical,
-//             dataViewMetadata: DataViewMetadata,
-//             dataValues: DataViewValueColumns,
-//             categoryData: ICategoryData,
-//             metadata: VisualMeasureMetadata,
-//             defaultDataPointColor: string,
-//             hasDynamicSeries: boolean,
-//             categoryFormatter: IValueFormatter,
-//             dataValueSource: DataViewMetadataColumn,
-//             labelSettings: VisualDataLabelsSettings): VisualDataPoint[] {
-//             // From each values object, we take a value related to current category,
-//             // and push it to the values array of our object.
-//             if (
-//                 !dataView
-//             ) {
-//                 return;
-//             }
-//
-//             const indicies: VisualMeasureMetadataIndexes = metadata.idx;
-//
-//             let dataPoints: VisualDataPoint[] = [];
-//             let colorHelper = new ColorHelper(
-//                 this.colorPalette,
-//                 PropertiesOfCapabilities.dataPoint.fill,
-//                 hasDynamicSeries ? '' : defaultDataPointColor
-//             );
-//             let fontSizeInPx: string = PixelConverter.toString(labelSettings.fontSize);
-//             let labelFontFamily: string = labelSettings.fontFamily;
-//
-//             for (let categoryIdx: number = 0, ilen: number = categoriesValues.length; categoryIdx < ilen; categoryIdx++) {
-//                 const categoryValue: any = categoriesValues[categoryIdx];
-//
-//                 for (let seriesIdx: number = 0, len: number = grouped.length; seriesIdx < len; seriesIdx++) {
-//
-//                     const grouping: DataViewValueColumnGroup = grouped[seriesIdx],
-//                         seriesValues: DataViewValueColumn[] = grouping.values,
-//                         measureX: DataViewValueColumn = visualUtils.getMeasureValue(
-//                             indicies.x,
-//                             seriesValues),
-//                         measureY: DataViewValueColumn = visualUtils.getMeasureValue(
-//                             indicies.y,
-//                             seriesValues),
-//                         measureSize: DataViewValueColumn = visualUtils.getMeasureValue(
-//                             indicies.size,
-//                             seriesValues),
-//                         measureShape: DataViewValueColumn = visualUtils.getMeasureValue(
-//                             indicies.shape,
-//                             seriesValues),
-//                         measureXStart: DataViewValueColumn = visualUtils.getMeasureValue(
-//                             indicies.xStart,
-//                             seriesValues),
-//                         measureXEnd: DataViewValueColumn = visualUtils.getMeasureValue(
-//                             indicies.xEnd,
-//                             seriesValues),
-//                         measureYStart: DataViewValueColumn = visualUtils.getMeasureValue(
-//                             indicies.yStart,
-//                             seriesValues),
-//                         measureYEnd: DataViewValueColumn = visualUtils.getMeasureValue(
-//                             indicies.yEnd,
-//                             seriesValues),
-//                         measureGradient: DataViewValueColumn = visualUtils.getMeasureValue(
-//                             indicies.gradient,
-//                             seriesValues);
-//
-//                     let xVal: PrimitiveValue = categoryUtils.getDefinedNumberByCategoryId(
-//                         measureX,
-//                         categoryIdx);
-//
-//                     let yVal: PrimitiveValue = categoryUtils.getDefinedNumberByCategoryId(
-//                         measureY,
-//                         categoryIdx);
-//
-//                     let sizeVal = categoryUtils.getValueFromDataViewValueColumnById(measureSize, categoryIdx);
-//                     sizeVal = sizeVal !== null && typeof sizeVal === "number" ? sizeVal : null;
-//
-//                     if (xVal == null && yVal == null && sizeVal == null) {
-//                         continue;
-//                     }
-//
-//                     let category = categories && categories.length > Visual.MinAmountOfCategories
-//                         ? categories[indicies.category]
-//                         : null;
-//
-//                     const identity: ISelectionId = visualHost.createSelectionIdBuilder()
-//                         .withCategory(category, categoryIdx)
-//                         .withSeries(dataValues, grouping)
-//                         .createSelectionId();
-//
-//                     let color: string,
-//                         xStart: number,
-//                         xEnd: number,
-//                         yStart: number,
-//                         yEnd: number,
-//                         gradient: number;
-//
-//                     xStart = categoryUtils.getValueFromDataViewValueColumnById(measureXStart, categoryIdx);
-//                     xEnd = categoryUtils.getValueFromDataViewValueColumnById(measureXEnd, categoryIdx);
-//                     yStart = categoryUtils.getValueFromDataViewValueColumnById(measureYStart, categoryIdx);
-//                     yEnd = categoryUtils.getValueFromDataViewValueColumnById(measureYEnd, categoryIdx);
-//                     gradient = categoryUtils.getValueFromDataViewValueColumnById(measureGradient, categoryIdx);
-//
-//                     if (hasDynamicSeries) {
-//                         color = colorHelper.getColorForSeriesValue(grouping.objects, grouping.name);
-//                     } else {
-//                         // If we have no Size measure then use a blank query name
-//                         let measureSource: string = (measureSize != null)
-//                             ? measureSize.source.queryName
-//                             : "";
-//
-//                         color = colorHelper.getColorForMeasure(
-//                             category.objects && category.objects[categoryIdx],
-//                             measureSource);
-//                     }
-//
-//                     const seriesData: tooltipBuilder.TooltipSeriesDataItem[] = [];
-//
-//                     if (dataValueSource) {
-//                         // Dynamic series
-//                         seriesData.push({
-//                             value: grouping.name,
-//                             metadata: {
-//                                 source: dataValueSource,
-//                                 values: []
-//                             }
-//                         });
-//                     }
-//
-//                     if (measureX) {
-//                         seriesData.push({
-//                             value: xVal,
-//                             metadata: measureX
-//                         });
-//                     }
-//
-//                     if (measureY) {
-//                         seriesData.push({
-//                             value: yVal,
-//                             metadata: measureY
-//                         });
-//                     }
-//
-//                     if (measureGradient) {
-//                         seriesData.push({
-//                             value: gradient,
-//                             metadata: measureGradient
-//                         });
-//                     }
-//
-//                     if (measureSize
-//                         && measureSize.values
-//                         && measureSize.values.length > Visual.MinAmountOfValues) {
-//
-//                         seriesData.push({
-//                             value: measureSize.values[categoryIdx],
-//                             metadata: measureSize
-//                         });
-//                     }
-//
-//                     if (measureShape
-//                         && measureShape.values
-//                         && measureShape.values.length > Visual.MinAmountOfValues) {
-//
-//                         seriesData.push({
-//                             value: measureShape.values[categoryIdx],
-//                             metadata: measureShape
-//                         });
-//                     }
-//
-//                     if (measureXStart
-//                         && measureXStart.values
-//                         && measureXStart.values.length > Visual.MinAmountOfValues) {
-//
-//                         seriesData.push({
-//                             value: measureXStart.values[categoryIdx],
-//                             metadata: measureXStart
-//                         });
-//                     }
-//
-//                     if (measureXEnd
-//                         && measureXEnd.values
-//                         && measureXEnd.values.length > Visual.MinAmountOfValues) {
-//
-//                         seriesData.push({
-//                             value: measureXEnd.values[categoryIdx],
-//                             metadata: measureXEnd
-//                         });
-//                     }
-//
-//                     if (measureYStart
-//                         && measureYStart.values
-//                         && measureYStart.values.length > Visual.MinAmountOfValues) {
-//
-//                         seriesData.push({
-//                             value: measureYStart.values[categoryIdx],
-//                             metadata: measureYStart
-//                         });
-//                     }
-//
-//                     if (measureYEnd
-//                         && measureYEnd.values
-//                         && measureYEnd.values.length > Visual.MinAmountOfValues) {
-//
-//                         seriesData.push({
-//                             value: measureYEnd.values[categoryIdx],
-//                             metadata: measureYEnd
-//                         });
-//                     }
-//
-//                     let additionalTooltipValues = seriesValues.filter(obj => (
-//
-//                         DataRoleHelper.hasRoleInValueColumn(obj, "Tooltips")
-//
-//                         && (
-//                             visualUtils.getObjectPropertiesLength(obj.source.roles) === 1
-//                             || (DataRoleHelper.hasRoleInValueColumn(obj, "Values")
-//                                 && visualUtils.getObjectPropertiesLength(obj.source.roles) === 2)
-//                         )
-//                     ));
-//
-//                     const playAxisValue: PrimitiveValue = playAxisCategory && playAxisCategory.values[categoryIdx];
-//
-//                     if (playAxisCategory) {
-//                         seriesData.push({
-//                             value: playAxisCategory.source.type.dateTime
-//                                 ? new Date(playAxisCategory.values[categoryIdx].toString()).toLocaleDateString("en-US")
-//                                 : playAxisCategory.values[categoryIdx],
-//                             metadata: playAxisCategory
-//                         });
-//                     }
-//
-//                     // add additional fields to tooltip from field buckets
-//                     if (additionalTooltipValues && additionalTooltipValues.length > 0) {
-//                         additionalTooltipValues.map((tooltipValue, i) => {
-//                             let value = categoryUtils.getValueFromDataViewValueColumnById(
-//                                 tooltipValue, categoryIdx);
-//                             seriesData.push({
-//                                 value,
-//                                 metadata: tooltipValue
-//                             });
-//                         });
-//                     }
-//
-//                     const tooltipInfo: VisualTooltipDataItem[] = tooltipBuilder.createTooltipInfo(
-//                         categoryValue,
-//                         category ? [category] : undefined,
-//                         seriesData);
-//
-//                     dataPoints.push({
-//                         x: xVal,
-//                         y: yVal,
-//                         size: sizeVal,
-//                         radius: {
-//                             sizeMeasure: measureSize,
-//                             index: categoryIdx,
-//                             value: sizeVal
-//                         },
-//                         xStart,
-//                         xEnd,
-//                         yStart,
-//                         yEnd,
-//                         tooltipInfo,
-//                         columnGroup: grouping,
-//                         fill: color,
-//                         identity,
-//                         formattedCategory: Visual.createLazyFormattedCategory(categoryFormatter, categoryValue),
-//                         selected: Visual.DefaultSelectionStateOfTheDataPoint,
-//                         labelFill: labelSettings.labelColor,
-//                         labelFontSize: fontSizeInPx,
-//                         labelFontFamily,
-//                         angleRange: [0, 0],
-//                         labelAnglePosition: 0,
-//                         equalDataPointLabelsCount: {
-//                             i: 0,
-//                             count: 1
-//                         },
-//                         playAxisValue
-//                     });
-//                 }
-//             }
-//
-//             return dataPoints;
-//         }
-//
-//         public static createLazyFormattedCategory(formatter: IValueFormatter, value: string): () => string {
-//             return () => formatter.format(value);
-//         }
-//
+    // eslint-disable-next-line max-lines-per-function
+    private transform(
+        visualHost: IVisualHost,
+        visualSize: ISize,
+        dataView: DataView,
+        grouped: DataViewValueColumnGroup[],
+        categories: DataViewCategoryColumn[],
+        categoriesValues: PrimitiveValue[] | [null],
+        playAxisCategory: DataViewCategoryColumn | null,
+        dataViewCategorical: DataViewCategorical,
+        dataViewMetadata: DataViewMetadata,
+        dataValues: DataViewValueColumns,
+        categoryData: ICategoryData | undefined,
+        metadata: VisualMeasureMetadata,
+        defaultDataPointColor: string,
+        hasDynamicSeries: boolean,
+        categoryFormatter: IValueFormatter,
+        dataValueSource: DataViewMetadataColumn | undefined,
+        labelSettings: VisualDataLabelsSettings): VisualDataPoint[] {
+        // From each values object, we take a value related to current category,
+        // and push it to the values array of our object.
+        if (
+            !dataView
+        ) {
+            return [];
+        }
+
+        const indicies = metadata.idx;
+
+        const dataPoints: VisualDataPoint[] = [];
+        const colorHelper = new ColorHelper(
+            this.colorPalette,
+            PropertiesOfCapabilities.dataPoint.fill,
+            hasDynamicSeries ? '' : defaultDataPointColor,
+        );
+        const fontSizeInPx = PixelConverter.toString(<number>labelSettings.fontSize);
+        const labelFontFamily = labelSettings.fontFamily;
+
+        for (let categoryIdx: number = 0, ilen: number = categoriesValues.length; categoryIdx < ilen; categoryIdx++) {
+            const categoryValue: any = categoriesValues[categoryIdx];
+
+            for (let seriesIdx: number = 0, len: number = grouped.length; seriesIdx < len; seriesIdx++) {
+                const grouping: DataViewValueColumnGroup = grouped[seriesIdx];
+                const seriesValues = grouping.values;
+                const measureX = getMeasureValue(
+                    indicies.x,
+                    seriesValues);
+                const measureY = getMeasureValue(
+                    indicies.y,
+                    seriesValues);
+                const measureSize = getMeasureValue(
+                    indicies.size,
+                    seriesValues);
+                const measureShape = getMeasureValue(
+                    indicies.shape,
+                    seriesValues);
+                const measureXStart = getMeasureValue(
+                    indicies.xStart,
+                    seriesValues);
+                const measureXEnd = getMeasureValue(
+                    indicies.xEnd,
+                    seriesValues);
+                const measureYStart = getMeasureValue(
+                    indicies.yStart,
+                    seriesValues);
+                const measureYEnd = getMeasureValue(
+                    indicies.yEnd,
+                    seriesValues);
+                const measureGradient = getMeasureValue(
+                    indicies.gradient,
+                    seriesValues);
+
+                const xVal = getDefinedNumberByCategoryId(
+                    measureX,
+                    categoryIdx);
+
+                const yVal = getDefinedNumberByCategoryId(
+                    measureY,
+                    categoryIdx);
+
+                let sizeVal = getValueFromDataViewValueColumnById(measureSize, categoryIdx);
+                sizeVal = sizeVal !== null && typeof sizeVal === 'number' ? sizeVal : null;
+                if (xVal == null && yVal == null && sizeVal == null) {
+                    continue;
+                }
+
+                const category = categories && categories.length > Visual.MinAmountOfCategories && typeof indicies.category === 'number'
+                    ? categories[indicies.category]
+                    : null;
+
+                const identity = visualHost.createSelectionIdBuilder()
+                    .withCategory(<any>category, categoryIdx)
+                    .withSeries(dataValues, grouping)
+                    .createSelectionId();
+
+                const xStart = getValueFromDataViewValueColumnById(measureXStart, categoryIdx);
+                const xEnd = getValueFromDataViewValueColumnById(measureXEnd, categoryIdx);
+                const yStart = getValueFromDataViewValueColumnById(measureYStart, categoryIdx);
+                const yEnd = getValueFromDataViewValueColumnById(measureYEnd, categoryIdx);
+                const gradient = getValueFromDataViewValueColumnById(measureGradient, categoryIdx);
+                console.log('axis values');
+                console.log(xStart);
+                console.log(xEnd);
+                console.log(yStart);
+                console.log(yEnd);
+
+                let color: string;
+                if (hasDynamicSeries) {
+                    color = colorHelper.getColorForSeriesValue(<any>grouping.objects, <any>grouping.name);
+                } else {
+                    // If we have no Size measure then use a blank query name
+                    const measureSource = measureSize?.source.queryName ?? '';
+
+                    color = colorHelper.getColorForMeasure(
+                        <any>category?.objects?.[categoryIdx],
+                        measureSource);
+                }
+
+                const seriesData: TooltipSeriesDataItem[] = [];
+
+                if (dataValueSource) {
+                    // Dynamic series
+                    seriesData.push({
+                        value: grouping.name,
+                        metadata: {
+                            source: dataValueSource,
+                            values: [],
+                        },
+                    });
+                }
+
+                if (measureX) {
+                    seriesData.push({
+                        value: xVal,
+                        metadata: measureX,
+                    });
+                }
+
+                if (measureY) {
+                    seriesData.push({
+                        value: yVal,
+                        metadata: measureY,
+                    });
+                }
+
+                if (measureGradient) {
+                    seriesData.push({
+                        value: gradient,
+                        metadata: measureGradient,
+                    });
+                }
+
+                if (measureSize
+                    && measureSize.values
+                    && measureSize.values.length > Visual.MinAmountOfValues) {
+
+                    seriesData.push({
+                        value: measureSize.values[categoryIdx],
+                        metadata: measureSize,
+                    });
+                }
+
+                if (measureShape
+                    && measureShape.values
+                    && measureShape.values.length > Visual.MinAmountOfValues) {
+
+                    seriesData.push({
+                        value: measureShape.values[categoryIdx],
+                        metadata: measureShape,
+                    });
+                }
+
+                if (measureXStart
+                    && measureXStart.values
+                    && measureXStart.values.length > Visual.MinAmountOfValues) {
+
+                    seriesData.push({
+                        value: measureXStart.values[categoryIdx],
+                        metadata: measureXStart,
+                    });
+                }
+
+                if (measureXEnd
+                    && measureXEnd.values
+                    && measureXEnd.values.length > Visual.MinAmountOfValues) {
+
+                    seriesData.push({
+                        value: measureXEnd.values[categoryIdx],
+                        metadata: measureXEnd,
+                    });
+                }
+
+                if (measureYStart
+                    && measureYStart.values
+                    && measureYStart.values.length > Visual.MinAmountOfValues) {
+
+                    seriesData.push({
+                        value: measureYStart.values[categoryIdx],
+                        metadata: measureYStart,
+                    });
+                }
+
+                if (measureYEnd
+                    && measureYEnd.values
+                    && measureYEnd.values.length > Visual.MinAmountOfValues) {
+
+                    seriesData.push({
+                        value: measureYEnd.values[categoryIdx],
+                        metadata: measureYEnd,
+                    });
+                }
+
+                const additionalTooltipValues = seriesValues.filter(obj => (
+                    hasRoleInValueColumn(obj, 'Tooltips')
+                    && (
+                        getObjectPropertiesLength(obj.source.roles) === 1
+                        || (hasRoleInValueColumn(obj, 'Values')
+                            && getObjectPropertiesLength(obj.source.roles) === 2)
+                    )
+                ));
+
+                const playAxisValue = playAxisCategory && playAxisCategory.values[categoryIdx];
+
+                if (playAxisCategory) {
+                    seriesData.push({
+                        value: playAxisCategory.source.type?.dateTime
+                            ? new Date(playAxisCategory.values[categoryIdx].toString()).toLocaleDateString('en-US')
+                            : playAxisCategory.values[categoryIdx],
+                        metadata: playAxisCategory,
+                    });
+                }
+
+                // add additional fields to tooltip from field buckets
+                if (additionalTooltipValues && additionalTooltipValues.length > 0) {
+                    additionalTooltipValues.map((tooltipValue, i) => {
+                        const value = getValueFromDataViewValueColumnById(tooltipValue, categoryIdx);
+                        seriesData.push({
+                            value,
+                            metadata: tooltipValue,
+                        });
+                    });
+                }
+
+                const tooltipInfo: VisualTooltipDataItem[] = createTooltipInfo(
+                    categoryValue,
+                    category ? [category] : undefined,
+                    seriesData);
+
+                dataPoints.push({
+                    x: xVal,
+                    y: yVal,
+                    size: sizeVal,
+                    radius: {
+                        sizeMeasure: measureSize,
+                        index: categoryIdx,
+                        value: sizeVal,
+                    },
+                    xStart: <any>xStart,
+                    xEnd: <any>xEnd,
+                    yStart: <any>yStart,
+                    yEnd: <any>yEnd,
+                    tooltipInfo,
+                    columnGroup: grouping,
+                    fill: color,
+                    identity,
+                    formattedCategory: Visual.createLazyFormattedCategory(categoryFormatter, categoryValue),
+                    selected: Visual.DefaultSelectionStateOfTheDataPoint,
+                    labelFill: labelSettings.labelColor,
+                    labelFontSize: fontSizeInPx,
+                    labelFontFamily: <any>labelFontFamily,
+                    angleRange: [0, 0],
+                    labelAnglePosition: 0,
+                    equalDataPointLabelsCount: {
+                        i: 0,
+                        count: 1,
+                    },
+                    playAxisValue: playAxisValue ?? undefined,
+                });
+            }
+        }
+
+        return dataPoints;
+    }
+
+    public static createLazyFormattedCategory(formatter: IValueFormatter, value: string): () => string {
+        return () => formatter.format(value);
+    }
+
 //         private renderVisual(data: VisualData) {
 //             const colorHelper = new ColorHelper(this.host.colorPalette);
 //             const dataPoints: VisualDataPoint[] = data.dataPoints.filter(d =>
@@ -1939,6 +1958,7 @@ export class Visual implements IVisual {
     public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstanceEnumeration {
         try {
             console.log('=== enumerateObjectInstances START ===');
+            console.log(options);
 
             const instances: VisualObjectInstance[] = [];
 

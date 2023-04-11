@@ -34,7 +34,7 @@ export function buildLegendData(
     dataValues: DataViewValueColumns,
     host: IVisualHost,
     legendObjectProperties: DataViewObject,
-    dataValueSource: DataViewMetadataColumn,
+    dataValueSource: DataViewMetadataColumn | undefined,
     categories: DataViewCategoryColumn[],
     categoryIndex: number,
     hasDynamicSeries: boolean): LegendData {

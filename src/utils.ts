@@ -1,16 +1,13 @@
-// import axis = powerbi.extensibility.utils.chart.axis;
-// import IAxisProperties = powerbi.extensibility.utils.chart.axis.IAxisProperties;
-// import PixelConverter = powerbi.extensibility.utils.type.PixelConverter;
-// import TextProperties = powerbi.extensibility.utils.formatting.TextProperties;
-//
-// const minRatioBubbleSize = 120;
-// const DisplayUnitValue: number = 1;
-// const shapesSizeMin = 0;
-// const shapesSizeMax = 100;
-// const rangeMin = 1;
-// const rangeMax = 4;
-//
-//
+import powerbi from 'powerbi-visuals-api';
+import DataViewValueColumn = powerbi.DataViewValueColumn;
+
+const minRatioBubbleSize = 120;
+const DisplayUnitValue: number = 1;
+const shapesSizeMin = 0;
+const shapesSizeMax = 100;
+const rangeMin = 1;
+const rangeMax = 4;
+
 // export function getBubbleRadius(bubbleSize: PrimitiveValue, viewportSize: ISize, sizeScale, shapesSize: number = 0) {
 //     const minSize = Math.min(viewportSize.width, viewportSize.height);
 //
@@ -57,19 +54,18 @@
 //
 //     return result;
 // }
-//
-// export function getMeasureValue(
-//     measureIndex: number,
-//     seriesValues: DataViewValueColumn[]): DataViewValueColumn {
-//
-//     if (seriesValues && measureIndex >= 0) {
-//         return seriesValues[measureIndex];
-//     }
-//
-//     return null;
-// }
-//
-//
+
+export function getMeasureValue(
+    measureIndex: number | undefined,
+    seriesValues: DataViewValueColumn[]): DataViewValueColumn | null {
+
+    if (seriesValues && typeof measureIndex === 'number' && measureIndex >= 0) {
+        return seriesValues[measureIndex];
+    }
+
+    return null;
+}
+
 // export function getVisibleAngleRange(axes: IAxes, xVal, yVal, viewport, radius, sizeScale, shapesSize: number) {
 //     let width = viewport.width;
 //     let height = viewport.height;
@@ -166,19 +162,19 @@
 //         }
 //     }
 // }
-//
-// export function getObjectPropertiesLength(obj: object): number {
-//     let counter: number = 0;
-//
-//     if (obj) {
-//         for (let key in obj) {
-//             counter++;
-//         }
-//     }
-//
-//     return counter;
-// }
-//
+
+export function getObjectPropertiesLength(obj: object | null | undefined): number {
+    let counter: number = 0;
+
+    if (obj) {
+        for (const key in obj) {
+            counter++;
+        }
+    }
+
+    return counter;
+}
+
 // export function compareObjects(obj1: any[], obj2: any[], property: string): boolean {
 //     let isEqual: boolean = false;
 //

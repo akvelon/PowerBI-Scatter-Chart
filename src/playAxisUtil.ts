@@ -1,90 +1,75 @@
 import {Selection} from 'd3-selection';
 import {ITooltipServiceWrapper} from 'powerbi-visuals-utils-tooltiputils';
 
+interface PlayAxisMeasures {
+    width: number;
+    height: number;
+    left: number;
+    top: number;
+}
 
-// interface PlayAxisMeasures {
-//     width: number;
-//     height: number;
-//     left: number;
-//     top: number;
-// }
-//
-// enum PlayAxisValueType {
-//     Date,
-//     Number,
-//     String
-// }
-//
-// enum PathBuildingMode {
-//     ByCategory,
-//     ByLegend,
-//     ByBoth
-// }
-//
-// module Constants {
-//     export const Months: Readonly<string>[] = [
-//         'January',
-//         'February',
-//         'March',
-//         'April',
-//         'May',
-//         'June',
-//         'July',
-//         'August',
-//         'September',
-//         'October',
-//         'November',
-//         'December'
-//     ];
-//
-//     export const Height: number = 63;
-//     export const FontSize: number = 11; // this is taken from visual.less, must be in sync with it
-//     export const MarginTop: number = 10;
-//     export const SlicingDuration: number = 600;
-//
-//     export module Slider {
-//         export const Height: number = 12;
-//         export const AnimationDuration: number = 800;
-//         export const BorderWidth: number = 1; // this is taken from jQuery UI stylesheet
-//     }
-//
-//     export module Axis {
-//         export const Height: number = 41;
-//         export const LabelsMargin: number = 10; // distance between the labels
-//         export const InnerTickSize: number = 5; // tick height
-//         export const TickPadding: number = 12; // distance between ticks and labels
-//         export const BigTickClass: string = 'showLabel';
-//     }
-//
-//     export module PlayButton {
-//         export const MarginTop: number = -6;
-//         export const Space: number = 35; // space needed for rendering the button
-//         export const TimeInterval: number = 800;
-//         export const PlayingClass: string = 'playing';
-//     }
-//
-//     export module Caption {
-//         export const PaddingRight: number = 10;
-//         export module FontSize {
-//             export const Factor: number = 8.14;
-//             export const MaxValue: number = 70;
-//         }
-//     }
-//
-//     export module Path {
-//         export const DrawingDuration: number = 750;
-//         export const LineClassName: string = 'play-axis-path';
-//         export const LengthReserve: number = 20;
-//         export module Circle {
-//             export const ClassName: string = 'play-axis-path-circle';
-//             export const Radius: number = 7;
-//         }
-//     }
-// }
-//
+const enum PlayAxisValueType {
+    Date,
+    Number,
+    String
+}
+
+const enum PathBuildingMode {
+    ByCategory,
+    ByLegend,
+    ByBoth
+}
+
+class Constants {
+    static readonly Months: Readonly<string>[] = [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+    ];
+
+    static readonly Height: number = 63;
+    static readonly FontSize: number = 11; // this is taken from visual.less, must be in sync with it
+    static readonly MarginTop: number = 10;
+    static readonly SlicingDuration: number = 600;
+
+    static readonly SliderHeight: number = 12;
+    static readonly SliderAnimationDuration: number = 800;
+    static readonly SliderBorderWidth: number = 1; // this is taken from jQuery UI stylesheet
+
+    static readonly AxisHeight: number = 41;
+    static readonly AxisLabelsMargin: number = 10; // distance between the labels
+    static readonly AxisInnerTickSize: number = 5; // tick height
+    static readonly AxisTickPadding: number = 12; // distance between ticks and labels
+    static readonly AxisBigTickClass: string = 'showLabel';
+
+    static readonly PlayButtonMarginTop: number = -6;
+    static readonly PlayButtonSpace: number = 35; // space needed for rendering the button
+    static readonly PlayButtonTimeInterval: number = 800;
+    static readonly PlayButtonPlayingClass: string = 'playing';
+
+    static readonly CaptionPaddingRight: number = 10;
+    static readonly CaptionFontSizeFactor: number = 8.14;
+    static readonly CaptionFontSizeMaxValue: number = 70;
+
+    static readonly PathDrawingDuration: number = 750;
+    static readonly PathLineClassName: string = 'play-axis-path';
+    static readonly PathLengthReserve: number = 20;
+    static readonly PathCircleClassName: string = 'play-axis-path-circle';
+    static readonly PathCircleRadius: number = 7;
+}
+
 export class PlayAxis {
-//     // general
-//     private enabled: boolean = true;
+    // general
+    private enabled: boolean = true;
 //     private visualSize: ISize;
 //     private groupedDataPoints: VisualDataPoint[][];
 //     private groupNames: string[];
@@ -178,12 +163,12 @@ export class PlayAxis {
 //     isEnabled(): boolean {
 //         return this.enabled;
 //     }
-//
-//     getHeight(): number {
-//         // getting the space needed for rendering the playAxis elements
-//         return this.enabled ? Constants.MarginTop + Constants.Height : 0;
-//     }
-//
+
+    getHeight(): number {
+        // getting the space needed for rendering the playAxis elements
+        return this.enabled ? Constants.MarginTop + Constants.Height : 0;
+    }
+
 //     onSelect(currentSelection: d3.Selection<any>, transition: boolean): void {
 //         // this method is called when any of data points are being selected or deselected
 //
