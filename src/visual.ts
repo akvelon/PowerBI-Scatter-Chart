@@ -14,12 +14,14 @@ import {
     createInteractivitySelectionService, SelectableDataPoint,
 } from 'powerbi-visuals-utils-interactivityutils/lib/interactivitySelectionService';
 import {
+    AxesOptions,
+    IAxes,
     IAxesSize, ICategoryData,
     IMargin,
     VisualData,
     VisualDataLabelsSettings,
     VisualDataPoint,
-    VisualDataViewObject, VisualMeasureMetadata,
+    VisualDataViewObject, VisualMeasureMetadata, VisualMeasureMetadataColumns,
 } from './visualInterfaces';
 import {createLegend} from 'powerbi-visuals-utils-chartutils/lib/legend/legend';
 import {ILegend, LegendPosition} from 'powerbi-visuals-utils-chartutils/lib/legend/legendInterfaces';
@@ -76,12 +78,17 @@ import DataViewMetadata = powerbi.DataViewMetadata;
 import DataViewValueColumns = powerbi.DataViewValueColumns;
 import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
 import {pixelConverter as PixelConverter} from 'powerbi-visuals-utils-typeutils';
-import {getMeasureValue, getObjectPropertiesLength} from './utils';
+import {getMeasureValue, getObjectPropertiesLength, getSizeRangeForGroups} from './utils';
 import {hasRoleInValueColumn} from 'powerbi-visuals-utils-dataviewutils/lib/dataRoleHelper';
 import {createTooltipInfo, TooltipSeriesDataItem} from './tooltipBuilder';
+import {translate as svgTranslate} from 'powerbi-visuals-utils-svgutils/lib/manipulation';
+import {min as d3min, max as d3max} from 'd3-array';
+import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
+import {scaleLinear, scalePoint} from 'd3-scale';
 
 import '../style/visual.less';
-import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
+import {IAxisProperties} from 'powerbi-visuals-utils-chartutils/lib/axis/axisInterfaces';
+import DataViewPropertyValue = powerbi.DataViewPropertyValue;
 
 class Selectors {
     static readonly MainSvg = createClassAndSelector('lasso-scatter-chart-svg');
@@ -284,15 +291,12 @@ export class Visual implements IVisual {
             this.dataView = dataView;
 
             // Parse settings
-            console.log('parse settings');
             this.settings = VisualSettings.parse<VisualSettings>(dataView);
 
             // Get categories for legend
-            console.log('get categories');
             const categoryData = getCategories(dataView);
 
             // Get metadata
-            console.log('get metadata');
             const grouped = dataView.categorical?.values?.grouped();
             const source = dataView.metadata.columns[0];
 
@@ -302,16 +306,13 @@ export class Visual implements IVisual {
             const dataViewCategorical = dataView.categorical;
             const dataViewMetadata = dataView.metadata;
             const dataValues = dataViewCategorical?.values;
-            const dataValueSource = dataValues?.source;
-
-            console.log(dataValues);
-            console.log(dataValueSource);
             if (!dataValues) {
                 // Should not happen.
                 return;
             }
 
-            const hasDynamicSeries = !!dataValues.source;
+            const dataValueSource = dataValues.source;
+            const hasDynamicSeries = !!dataValueSource;
 
             // if no 'Details' field we use 'Play Axis' as the category
             const categoryIndex = typeof metadata.idx.category !== 'undefined' && metadata.idx.category > -1 ? metadata.idx.category : metadata.idx.playAxis ?? 0;
@@ -324,7 +325,6 @@ export class Visual implements IVisual {
             let showAllDataPoints: boolean = true;
             let categoryFormatter: IValueFormatter;
 
-            console.log('get axis properties');
             this.categoryAxisProperties = getCategoryAxisProperties(dataViewMetadata, true);
             this.valueAxisProperties = getValueAxisProperties(dataViewMetadata, true);
             this.xAxisConstantLineProperties = getXConstantLineProperties(dataViewMetadata);
@@ -523,70 +523,75 @@ export class Visual implements IVisual {
                     dataLabelsSettings);
             }
 
-//             // Set width and height of visual to SVG group
-//             this.visualSvgGroupMarkers
-//                 .attr("width", visualSize.width)
-//                 .attr("height", visualSize.height);
-//
-//             // Move SVG group elements to appropriate positions.
-//             this.visualSvgGroup.attr(
-//                 "transform",
-//                 svg.translate(
-//                     visualMargin.left + axesSize.yAxisWidth,
-//                     visualMargin.top));
-//
-//             this.xAxisSvgGroup.attr(
-//                 "transform",
-//                 svg.translate(
-//                     visualMargin.left + axesSize.yAxisWidth,
-//                     visualMargin.top + visualSize.height));
-//             this.yAxisSvgGroup.attr(
-//                 "transform",
-//                 svg.translate(
-//                     visualMargin.left + axesSize.yAxisWidth,
-//                     visualMargin.top));
-//
-//             // Create linear scale for bubble size
-//             const sizeScale = this.getBubbleSizeScale(dataPoints);
-//
-//             const sizeRange: ValueRange<number> = visualUtils.getSizeRangeForGroups(
-//                 grouped,
-//                 metadata.idx.size);
-//
-//             if (categoryAxisProperties
-//                 && categoryAxisProperties["showAxisTitle"] !== null
-//                 && categoryAxisProperties["showAxisTitle"] === false) {
-//                 metadata.axesLabels.x = null;
-//             }
-//             if (valueAxisProperties
-//                 && valueAxisProperties["showAxisTitle"] !== null
-//                 && valueAxisProperties["showAxisTitle"] === false) {
-//                 metadata.axesLabels.y = null;
-//             }
-//
-//             if (dataPoints && dataPoints[0]) {
-//                 const dataPoint: VisualDataPoint = dataPoints[0];
-//
-//                 if (dataPoint.xStart != null) {
-//                     categoryAxisProperties["start"] = dataPoint.xStart;
-//                 }
-//
-//                 if (dataPoint.xEnd != null) {
-//                     categoryAxisProperties["end"] = dataPoint.xEnd;
-//                 }
-//
-//                 if (dataPoint.yStart != null) {
-//                     valueAxisProperties["start"] = dataPoint.yStart;
-//                 }
-//
-//                 if (dataPoint.yEnd != null) {
-//                     valueAxisProperties["end"] = dataPoint.yEnd;
-//                 }
-//             }
-//
-//             let axesOptions = { categoryAxisProperties, valueAxisProperties, xAxisConstantLine: xAxisConstantLineProperties, yAxisConstantLine: yAxisConstantLineProperties };
-//
-//             const axes = this.createD3Axes(visualSize, dataPoints, metadata.cols, axesOptions);
+            // Set width and height of visual to SVG group
+            this.visualSvgGroupMarkers
+                .attr('width', visualSize.width)
+                .attr('height', visualSize.height);
+
+            // Move SVG group elements to appropriate positions.
+            this.visualSvgGroup.attr(
+                'transform',
+                svgTranslate(
+                    visualMargin.left + axesSize.yAxisWidth,
+                    visualMargin.top));
+
+            this.xAxisSvgGroup.attr(
+                'transform',
+                svgTranslate(
+                    visualMargin.left + axesSize.yAxisWidth,
+                    visualMargin.top + visualSize.height));
+            this.yAxisSvgGroup.attr(
+                'transform',
+                svgTranslate(
+                    visualMargin.left + axesSize.yAxisWidth,
+                    visualMargin.top));
+
+            // Create linear scale for bubble size
+            const sizeScale = this.getBubbleSizeScale(dataPoints);
+
+            const sizeRange = getSizeRangeForGroups(
+                grouped,
+                metadata.idx.size);
+
+            if (categoryAxisProperties
+                && categoryAxisProperties['showAxisTitle'] !== null
+                && categoryAxisProperties['showAxisTitle'] === false) {
+                metadata.axesLabels.x = null;
+            }
+            if (valueAxisProperties
+                && valueAxisProperties['showAxisTitle'] !== null
+                && valueAxisProperties['showAxisTitle'] === false) {
+                metadata.axesLabels.y = null;
+            }
+
+            if (dataPoints && dataPoints[0]) {
+                const dataPoint: VisualDataPoint = dataPoints[0];
+
+                if (dataPoint.xStart != null) {
+                    categoryAxisProperties['start'] = dataPoint.xStart;
+                }
+
+                if (dataPoint.xEnd != null) {
+                    categoryAxisProperties['end'] = dataPoint.xEnd;
+                }
+
+                if (dataPoint.yStart != null) {
+                    valueAxisProperties['start'] = dataPoint.yStart;
+                }
+
+                if (dataPoint.yEnd != null) {
+                    valueAxisProperties['end'] = dataPoint.yEnd;
+                }
+            }
+
+            const axesOptions: AxesOptions = {
+                categoryAxisProperties,
+                valueAxisProperties,
+                xAxisConstantLine: xAxisConstantLineProperties,
+                yAxisConstantLine: yAxisConstantLineProperties,
+            };
+
+            const axes = this.createD3Axes(visualSize, dataPoints, metadata.cols, axesOptions);
 
 //             this.yAxisIsCategorical = axes.y.isCategoryAxis;
 //
@@ -751,9 +756,7 @@ export class Visual implements IVisual {
         labelSettings: VisualDataLabelsSettings): VisualDataPoint[] {
         // From each values object, we take a value related to current category,
         // and push it to the values array of our object.
-        if (
-            !dataView
-        ) {
+        if (!dataView) {
             return [];
         }
 
@@ -830,11 +833,6 @@ export class Visual implements IVisual {
                 const yStart = getValueFromDataViewValueColumnById(measureYStart, categoryIdx);
                 const yEnd = getValueFromDataViewValueColumnById(measureYEnd, categoryIdx);
                 const gradient = getValueFromDataViewValueColumnById(measureGradient, categoryIdx);
-                console.log('axis values');
-                console.log(xStart);
-                console.log(xEnd);
-                console.log(yStart);
-                console.log(yEnd);
 
                 let color: string;
                 if (hasDynamicSeries) {
@@ -1447,160 +1445,160 @@ export class Visual implements IVisual {
 //                     }
 //                 });
 //         }
-//
-//
-//         private createD3Axes(visualSize: ISize, items: VisualDataPoint[], metaDataColumn: VisualMeasureMetadataColumns, options): IAxes {
-//             // Create ordinal scale for X axis.
-//             let dataDomainMinX: number = d3.min(items, d => <number>d.x);
-//             let dataDomainMaxX = d3.max(items, d => <number>d.x);
-//             let xAxisProperties: axis.IAxisProperties = null;
-//             let categoryAxisProperties = options.categoryAxisProperties;
-//             let valueAxisProperties = options.valueAxisProperties;
-//             let xLine = options.xAxisConstantLine.value;
-//             let isShowXLine = options.xAxisConstantLine.show;
-//             let yLine = options.yAxisConstantLine.value;
-//             let isShowYLine = options.yAxisConstantLine.show;
-//             let forcedXDomain, forcedYDomain;
-//
-//             dataDomainMinX = dataDomainMinX !== null ? dataDomainMinX : Visual.DefaultDataDomainMin;
-//             dataDomainMaxX = dataDomainMaxX !== null ? dataDomainMaxX : Visual.DefaultDataDomainMin;
-//
-//             dataDomainMinX = isShowXLine && xLine < dataDomainMinX ? xLine : dataDomainMinX;
-//             dataDomainMaxX = isShowXLine && xLine > dataDomainMaxX ? xLine : dataDomainMaxX;
-//
-//             forcedXDomain = [
-//                 categoryAxisProperties
-//                     ? categoryAxisProperties["start"]
-//                     : null,
-//                 categoryAxisProperties
-//                     ? categoryAxisProperties["end"]
-//                     : null
-//             ];
-//
-//             let categoryAxisDisplayUnits = categoryAxisProperties && categoryAxisProperties["labelDisplayUnits"] != null
-//                 ? <number>categoryAxisProperties["labelDisplayUnits"]
-//                 : Visual.LabelDisplayUnitsDefault;
-//
-//             let categoryAxisScaleType = categoryAxisProperties && categoryAxisProperties["axisScale"] != null
-//                 ? <string>categoryAxisProperties["axisScale"]
-//                 : null;
-//
-//             let xAxisPrecision: any = categoryAxisProperties && categoryAxisProperties["valueDecimalPlaces"] != null && categoryAxisProperties["valueDecimalPlaces"] >= 0
-//                 ? <string>categoryAxisProperties["valueDecimalPlaces"]
-//                 : Visual.DefaultPrecision;
-//
-//             dataDomainMinX = forcedXDomain[0] !== null && forcedXDomain[0] !== undefined ? forcedXDomain[0] : dataDomainMinX;
-//             dataDomainMaxX = forcedXDomain[1] !== null && forcedXDomain[1] !== undefined ? forcedXDomain[1] : dataDomainMaxX;
-//
-//             let xAxisFormatString: string = valueFormatter.getFormatStringByColumn(metaDataColumn.x);
-//
-//             if (dataDomainMinX === 0 && dataDomainMaxX === 0) {
-//                 dataDomainMinX = -1;
-//                 dataDomainMaxX = 1;
-//             }
-//
-//
-//             if (xAxisPrecision === 0) {
-//                 xAxisPrecision = xAxisPrecision.toString();
-//             }
-//
-//             xAxisProperties = createAxis({
-//                 pixelSpan: visualSize.width,
-//                 dataDomain: [dataDomainMinX, dataDomainMaxX],
-//                 metaDataColumn: metaDataColumn.x,
-//                 formatString: xAxisFormatString,
-//                 outerPadding: 0,
-//                 innerPadding: 0,
-//                 isScalar: true,
-//                 isVertical: false,
-//                 isCategoryAxis: true,
-//                 useTickIntervalForDisplayUnits: true,
-//                 scaleType: categoryAxisScaleType,
-//                 axisDisplayUnits: categoryAxisDisplayUnits,
-//                 axisPrecision: xAxisPrecision
-//             });
-//
-//             // Hide all ticks for X axis.
-//             xAxisProperties.axis
-//                 .innerTickSize(-visualSize.height)
-//                 .tickPadding(Visual.DefaultAxisXTickPadding)
-//                 .outerTickSize(1);
-//
-//             // Create linear scale for Y axis
-//
-//             let dataDomainMinY = d3.min(items, d => <number>d.y);
-//             let dataDomainMaxY = d3.max(items, d => <number>d.y);
-//             let yAxisProperties: axis.IAxisProperties = null;
-//
-//             dataDomainMinY = dataDomainMinY !== null ? dataDomainMinY : Visual.DefaultDataDomainMin;
-//             dataDomainMaxY = dataDomainMaxY !== null ? dataDomainMaxY : Visual.DefaultDataDomainMin;
-//
-//             dataDomainMinY = isShowYLine && yLine < dataDomainMinY ? yLine : dataDomainMinY;
-//             dataDomainMaxY = isShowYLine && yLine > dataDomainMaxY ? yLine : dataDomainMaxY;
-//
-//             let yAxisFormatString: string = valueFormatter.getFormatStringByColumn(metaDataColumn.y);
-//
-//             let valueAxisDisplayUnits = valueAxisProperties && valueAxisProperties["labelDisplayUnits"] != null
-//                 ? <number>valueAxisProperties["labelDisplayUnits"]
-//                 : Visual.LabelDisplayUnitsDefault;
-//
-//             let valueAxisScaleType = valueAxisProperties && valueAxisProperties["axisScale"] != null
-//                 ? <string>valueAxisProperties["axisScale"]
-//                 : null;
-//
-//             let yAxisPrecision: any = valueAxisProperties && valueAxisProperties["valueDecimalPlaces"] != null && valueAxisProperties["valueDecimalPlaces"] >= 0
-//                 ? <string>valueAxisProperties["valueDecimalPlaces"]
-//                 : Visual.DefaultPrecision;
-//
-//             forcedYDomain = [
-//                 valueAxisProperties
-//                     ? valueAxisProperties["start"]
-//                     : null,
-//                 valueAxisProperties
-//                     ? valueAxisProperties["end"]
-//                     : null
-//             ];
-//
-//             dataDomainMinY = forcedYDomain[0] !== null && forcedYDomain[0] !== undefined ? forcedYDomain[0] : dataDomainMinY;
-//             dataDomainMaxY = forcedYDomain[1] !== null && forcedYDomain[1] !== undefined ? forcedYDomain[1] : dataDomainMaxY;
-//
-//             if (dataDomainMinY === 0 && dataDomainMaxY === 0) {
-//                 dataDomainMinY = -1;
-//                 dataDomainMaxY = 1;
-//             }
-//
-//             if (yAxisPrecision === 0) {
-//                 yAxisPrecision = yAxisPrecision.toString();
-//             }
-//
-//             yAxisProperties = createAxis({
-//                 pixelSpan: visualSize.height,
-//                 dataDomain: [dataDomainMinY, dataDomainMaxY],
-//                 metaDataColumn: metaDataColumn.y,
-//                 formatString: yAxisFormatString,
-//                 outerPadding: 0,
-//                 innerPadding: 0,
-//                 isScalar: true,
-//                 isVertical: true,
-//                 isCategoryAxis: false,
-//                 useTickIntervalForDisplayUnits: true,
-//                 scaleType: valueAxisScaleType,
-//                 axisDisplayUnits: valueAxisDisplayUnits,
-//                 axisPrecision: yAxisPrecision
-//             });
-//
-//
-//             // For Y axis, make ticks appear full-width.
-//             yAxisProperties.axis
-//                 .innerTickSize(-visualSize.width)
-//                 .tickPadding(Visual.DefaultAxisYTickPadding)
-//                 .outerTickSize(1);
-//
-//             return {
-//                 x: xAxisProperties,
-//                 y: yAxisProperties,
-//             };
-//         }
+
+    // eslint-disable-next-line max-lines-per-function
+    private createD3Axes(visualSize: ISize, items: VisualDataPoint[], metaDataColumn: VisualMeasureMetadataColumns, options: AxesOptions): IAxes {
+        // Create ordinal scale for X axis.
+        let dataDomainMinX: DataViewPropertyValue = d3min(items, d => <number>d.x) ?? Visual.DefaultDataDomainMin;
+        let dataDomainMaxX: DataViewPropertyValue = d3max(items, d => <number>d.x) ?? Visual.DefaultDataDomainMin;
+        const xAxisProperties: IAxisProperties | null = null;
+        const categoryAxisProperties = options.categoryAxisProperties;
+        const valueAxisProperties = options.valueAxisProperties;
+        const xLine = options.xAxisConstantLine.value;
+        const isShowXLine = options.xAxisConstantLine.show;
+        const yLine = options.yAxisConstantLine.value;
+        const isShowYLine = options.yAxisConstantLine.show;
+        let forcedYDomain;
+
+        dataDomainMinX = isShowXLine && xLine < dataDomainMinX ? xLine : dataDomainMinX;
+        dataDomainMaxX = isShowXLine && xLine > dataDomainMaxX ? xLine : dataDomainMaxX;
+
+        const forcedXDomain: [DataViewPropertyValue | null, DataViewPropertyValue | null] = [
+            categoryAxisProperties
+                ? categoryAxisProperties['start']
+                : null,
+            categoryAxisProperties
+                ? categoryAxisProperties['end']
+                : null,
+        ];
+
+        const categoryAxisDisplayUnits = categoryAxisProperties && categoryAxisProperties['labelDisplayUnits'] != null
+            ? <number>categoryAxisProperties['labelDisplayUnits']
+            : Visual.LabelDisplayUnitsDefault;
+
+        console.log(forcedXDomain);
+        console.log(categoryAxisDisplayUnits);
+
+        // const categoryAxisScaleType = categoryAxisProperties && categoryAxisProperties['axisScale'] != null
+        //     ? <string>categoryAxisProperties['axisScale']
+        //     : null;
+        //
+        // let xAxisPrecision: any = categoryAxisProperties && categoryAxisProperties['valueDecimalPlaces'] != null && categoryAxisProperties['valueDecimalPlaces'] >= 0
+        //     ? <string>categoryAxisProperties['valueDecimalPlaces']
+        //     : Visual.DefaultPrecision;
+        //
+        // dataDomainMinX = forcedXDomain[0] !== null && forcedXDomain[0] !== undefined ? forcedXDomain[0] : dataDomainMinX;
+        // dataDomainMaxX = forcedXDomain[1] !== null && forcedXDomain[1] !== undefined ? forcedXDomain[1] : dataDomainMaxX;
+        //
+        // const xAxisFormatString: string = valueFormatter.getFormatStringByColumn(metaDataColumn.x);
+        //
+        // if (dataDomainMinX === 0 && dataDomainMaxX === 0) {
+        //     dataDomainMinX = -1;
+        //     dataDomainMaxX = 1;
+        // }
+        //
+        //
+        // if (xAxisPrecision === 0) {
+        //     xAxisPrecision = xAxisPrecision.toString();
+        // }
+        //
+        // xAxisProperties = createAxis({
+        //     pixelSpan: visualSize.width,
+        //     dataDomain: [dataDomainMinX, dataDomainMaxX],
+        //     metaDataColumn: metaDataColumn.x,
+        //     formatString: xAxisFormatString,
+        //     outerPadding: 0,
+        //     innerPadding: 0,
+        //     isScalar: true,
+        //     isVertical: false,
+        //     isCategoryAxis: true,
+        //     useTickIntervalForDisplayUnits: true,
+        //     scaleType: categoryAxisScaleType,
+        //     axisDisplayUnits: categoryAxisDisplayUnits,
+        //     axisPrecision: xAxisPrecision,
+        // });
+        //
+        // // Hide all ticks for X axis.
+        // xAxisProperties.axis
+        //     .innerTickSize(-visualSize.height)
+        //     .tickPadding(Visual.DefaultAxisXTickPadding)
+        //     .outerTickSize(1);
+        //
+        // // Create linear scale for Y axis
+        //
+        // let dataDomainMinY = d3.min(items, d => <number>d.y);
+        // let dataDomainMaxY = d3.max(items, d => <number>d.y);
+        // let yAxisProperties: axis.IAxisProperties = null;
+        //
+        // dataDomainMinY = dataDomainMinY !== null ? dataDomainMinY : Visual.DefaultDataDomainMin;
+        // dataDomainMaxY = dataDomainMaxY !== null ? dataDomainMaxY : Visual.DefaultDataDomainMin;
+        //
+        // dataDomainMinY = isShowYLine && yLine < dataDomainMinY ? yLine : dataDomainMinY;
+        // dataDomainMaxY = isShowYLine && yLine > dataDomainMaxY ? yLine : dataDomainMaxY;
+        //
+        // const yAxisFormatString: string = valueFormatter.getFormatStringByColumn(metaDataColumn.y);
+        //
+        // const valueAxisDisplayUnits = valueAxisProperties && valueAxisProperties['labelDisplayUnits'] != null
+        //     ? <number>valueAxisProperties['labelDisplayUnits']
+        //     : Visual.LabelDisplayUnitsDefault;
+        //
+        // const valueAxisScaleType = valueAxisProperties && valueAxisProperties['axisScale'] != null
+        //     ? <string>valueAxisProperties['axisScale']
+        //     : null;
+        //
+        // let yAxisPrecision: any = valueAxisProperties && valueAxisProperties['valueDecimalPlaces'] != null && valueAxisProperties['valueDecimalPlaces'] >= 0
+        //     ? <string>valueAxisProperties['valueDecimalPlaces']
+        //     : Visual.DefaultPrecision;
+        //
+        // forcedYDomain = [
+        //     valueAxisProperties
+        //         ? valueAxisProperties['start']
+        //         : null,
+        //     valueAxisProperties
+        //         ? valueAxisProperties['end']
+        //         : null,
+        // ];
+        //
+        // dataDomainMinY = forcedYDomain[0] !== null && forcedYDomain[0] !== undefined ? forcedYDomain[0] : dataDomainMinY;
+        // dataDomainMaxY = forcedYDomain[1] !== null && forcedYDomain[1] !== undefined ? forcedYDomain[1] : dataDomainMaxY;
+        //
+        // if (dataDomainMinY === 0 && dataDomainMaxY === 0) {
+        //     dataDomainMinY = -1;
+        //     dataDomainMaxY = 1;
+        // }
+        //
+        // if (yAxisPrecision === 0) {
+        //     yAxisPrecision = yAxisPrecision.toString();
+        // }
+        //
+        // yAxisProperties = createAxis({
+        //     pixelSpan: visualSize.height,
+        //     dataDomain: [dataDomainMinY, dataDomainMaxY],
+        //     metaDataColumn: metaDataColumn.y,
+        //     formatString: yAxisFormatString,
+        //     outerPadding: 0,
+        //     innerPadding: 0,
+        //     isScalar: true,
+        //     isVertical: true,
+        //     isCategoryAxis: false,
+        //     useTickIntervalForDisplayUnits: true,
+        //     scaleType: valueAxisScaleType,
+        //     axisDisplayUnits: valueAxisDisplayUnits,
+        //     axisPrecision: yAxisPrecision,
+        // });
+        //
+        //
+        // // For Y axis, make ticks appear full-width.
+        // yAxisProperties.axis
+        //     .innerTickSize(-visualSize.width)
+        //     .tickPadding(Visual.DefaultAxisYTickPadding)
+        //     .outerTickSize(1);
+        //
+        // return {
+        //     x: xAxisProperties,
+        //     y: yAxisProperties,
+        // };
+    }
 
     // eslint-disable-next-line max-lines-per-function
     private getCategoryAxisValues(instances: VisualObjectInstance[]): void {
@@ -1926,18 +1924,16 @@ export class Visual implements IVisual {
 //                 return Math.round(this.data.size.height / 2);
 //             }
 //         }
-//
-//         private getBubbleSizeScale(items: VisualDataPoint[]) {
-//             let minRange = d3.min(items, d => <number>d.radius.value);
-//             let maxRange = d3.max(items, d => <number>d.radius.value);
-//
-//             maxRange = maxRange ? maxRange : Visual.maxBubbleSize;
-//             minRange = minRange ? minRange : Visual.minBubbleSize;
-//
-//             return d3.scale.linear()
-//                 .domain([minRange, maxRange])
-//                 .range([Visual.minBubbleSize, Visual.maxBubbleSize]);
-//         }
+
+    private getBubbleSizeScale(items: VisualDataPoint[]) {
+        let minRange = d3min(items, d => <number>d.radius.value);
+        let maxRange = d3max(items, d => <number>d.radius.value);
+
+        maxRange = maxRange ? maxRange : Visual.maxBubbleSize;
+        minRange = minRange ? minRange : Visual.minBubbleSize;
+
+        return scaleLinear([minRange, maxRange], [Visual.minBubbleSize, Visual.maxBubbleSize]);
+    }
 
     public clearVisual(viewport: IViewport): void {
         this.legend.reset();

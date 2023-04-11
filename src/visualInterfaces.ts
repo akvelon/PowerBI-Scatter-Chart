@@ -11,6 +11,7 @@ import DataViewCategoryColumn = powerbi.DataViewCategoryColumn;
 import DataViewValueColumnGroup = powerbi.DataViewValueColumnGroup;
 import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
 import DataViewObject = powerbi.DataViewObject;
+import DataViewObjects = powerbi.DataViewObjects;
 
 export interface IMargin {
     top: number;
@@ -144,8 +145,8 @@ export interface VisualLabelsCount {
 // }
 
 export interface VisualAxesLabels {
-    x: string;
-    y: string;
+    x: string | null; // no null
+    y: string | null; // no null
 }
 
 export interface VisualMeasureMetadataColumns {
@@ -213,3 +214,10 @@ export interface VisualDataViewObject extends DataViewObject {
 //     updateType: VisualUpdateType;
 //     axes: IAxes;
 // }
+
+export interface AxesOptions {
+    categoryAxisProperties: DataViewObject;
+    valueAxisProperties: DataViewObject;
+    xAxisConstantLine: DataViewObject;
+    yAxisConstantLine: DataViewObject;
+}

@@ -1,5 +1,8 @@
 import powerbi from 'powerbi-visuals-api';
 import DataViewValueColumn = powerbi.DataViewValueColumn;
+import DataViewValueColumnGroup = powerbi.DataViewValueColumnGroup;
+import {axis} from 'powerbi-visuals-utils-chartutils';
+import NumberRange = powerbi.NumberRange;
 
 const minRatioBubbleSize = 120;
 const DisplayUnitValue: number = 1;
@@ -27,39 +30,38 @@ const rangeMax = 4;
 //         return radius * shapeScale(shapesSize);
 //     }
 // }
-//
-// export function getSizeRangeForGroups(
-//     dataViewValueGroups: DataViewValueColumnGroup[],
-//     sizeColumnIndex: number): NumberRange {
-//
-//     const result: NumberRange = {};
-//
-//     if (dataViewValueGroups) {
-//         dataViewValueGroups.forEach((group) => {
-//             const sizeColumn: DataViewValueColumn = getMeasureValue(
-//                 sizeColumnIndex,
-//                 group.values);
-//
-//             const currentRange: NumberRange = axis.getRangeForColumn(sizeColumn);
-//
-//             if (result.min == null || result.min > currentRange.min) {
-//                 result.min = currentRange.min;
-//             }
-//
-//             if (result.max == null || result.max < currentRange.max) {
-//                 result.max = currentRange.max;
-//             }
-//         });
-//     }
-//
-//     return result;
-// }
+
+export function getSizeRangeForGroups(
+    dataViewValueGroups: DataViewValueColumnGroup[] | undefined,
+    sizeColumnIndex: number | undefined): NumberRange {
+
+    const result: NumberRange = {};
+
+    if (dataViewValueGroups) {
+        dataViewValueGroups.forEach((group) => {
+            const sizeColumn = getMeasureValue(
+                sizeColumnIndex,
+                group.values);
+
+            const currentRange = axis.getRangeForColumn(<any>sizeColumn);
+
+            if (result.min == null || currentRange.min == null || result.min > currentRange.min) {
+                result.min = currentRange.min;
+            }
+
+            if (result.max == null || currentRange.max == null || result.max < currentRange.max) {
+                result.max = currentRange.max;
+            }
+        });
+    }
+
+    return result;
+}
 
 export function getMeasureValue(
     measureIndex: number | undefined,
     seriesValues: DataViewValueColumn[]): DataViewValueColumn | null {
-
-    if (seriesValues && typeof measureIndex === 'number' && measureIndex >= 0) {
+    if (seriesValues && typeof measureIndex !== 'undefined' && measureIndex >= 0) {
         return seriesValues[measureIndex];
     }
 
