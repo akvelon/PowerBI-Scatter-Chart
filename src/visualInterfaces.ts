@@ -35,12 +35,14 @@ export interface VisualData {
     hasDynamicSeries?: boolean;
     dataLabelsSettings: VisualDataLabelsSettings;
     sizeRange: NumberRange;
-    axesDimensions?: {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-    };
+    axesDimensions?: AxesDimensions;
+}
+
+export interface AxesDimensions {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
 }
 
 export interface IAxesSize {

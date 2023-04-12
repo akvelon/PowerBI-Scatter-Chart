@@ -97,6 +97,7 @@ import {setDatapointVisibleAngleRange} from './labelLayoutUtils';
 import {selectAll as d3selectAll} from 'd3-selection';
 
 import '../style/visual.less';
+import {lassoSelectorInit} from './selectionUtil';
 
 class Selectors {
     static readonly MainSvg = createClassAndSelector('lasso-scatter-chart-svg');
@@ -267,7 +268,7 @@ export class Visual implements IVisual {
 
             this.colorPalette = options.host.colorPalette;
 
-//             visualUtils.lassoSelectorInit(mainElement, this.behavior);
+            lassoSelectorInit(this.mainElement, this.behavior);
 
             this.playAxis = new PlayAxis(options.element, this.mainSvgElement, this.tooltipServiceWrapper);
 
@@ -349,12 +350,14 @@ export class Visual implements IVisual {
             const xAxisConstantLineProperties = this.xAxisConstantLineProperties;
             const yAxisConstantLineProperties = this.yAxisConstantLineProperties;
 
-//             // play axis - it affects the visual only if Play Axis bucket is filled
-//             if (dataViewCategorical.categories && dataViewCategorical.categories[metadata.idx.playAxis]) {
-//                 this.playAxis.enable();
-//             } else {
-//                 this.playAxis.disable();
-//             }
+            // play axis - it affects the visual only if Play Axis bucket is filled
+            if (dataViewCategorical.categories && metadata.idx.playAxis !== undefined && dataViewCategorical.categories[metadata.idx.playAxis]) {
+                console.log('play axis enabled');
+                this.playAxis.enable();
+            } else {
+                console.log('play axis disabled');
+                this.playAxis.disable();
+            }
 
             if (dataViewCategorical &&
                 dataViewCategorical.categories

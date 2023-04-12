@@ -5,12 +5,14 @@ import {
 } from 'powerbi-visuals-utils-interactivityutils/lib/interactivityBaseService';
 import {VisualDataPoint} from './visualInterfaces';
 import {Visual} from './visual';
+import {LegendDataPoint} from 'powerbi-visuals-utils-chartutils/lib/legend/legendInterfaces';
+import {Selection, BaseType} from 'd3-selection';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface VisualBehaviorOptions extends IBehaviorOptions<VisualDataPoint> {
     // clearCatcher: d3.Selection<any>;
     // selection: d3.Selection<VisualDataPoint>;
-    // legendItems: d3.Selection<LegendDataPoint>;
+    legendItems: Selection<BaseType, LegendDataPoint, never, never>;
     // getFillOpacity: (dataPoint: VisualDataPoint) => number;
     // pointsTransparencyProperties: DataViewObject;
     // lassoSelectorUpdate?: <VisualDataPoint>(circles: d3.Selection<VisualDataPoint>, pointsTransparencyProperties, fillPoint, data, callback: (circles: d3.Selection<VisualDataPoint>) => void) => void;
@@ -21,17 +23,17 @@ export interface VisualBehaviorOptions extends IBehaviorOptions<VisualDataPoint>
 }
 
 export class VisualBehavior implements IInteractiveBehavior {
-        // Implementation of IInteractiveBehavior
-        options: VisualBehaviorOptions;
-        visual: Visual;
+    // Implementation of IInteractiveBehavior
+    options: VisualBehaviorOptions;
+    visual: Visual;
 
 //         private skipNextRendering: boolean = false;
-//
-//         public selectionHandler: ISelectionHandler;
 
-        constructor(visual: Visual) {
-            this.visual = visual;
-        }
+    public selectionHandler: ISelectionHandler;
+
+    constructor(visual: Visual) {
+        this.visual = visual;
+    }
 
     public bindEvents(
         behaviorOptions: VisualBehaviorOptions,
@@ -39,12 +41,14 @@ export class VisualBehavior implements IInteractiveBehavior {
 
 //             const multiSelect: boolean = true;
 
-            this.options = behaviorOptions;
-//             this.selectionHandler = selectionHandler;
-//
-//             behaviorOptions.legendItems.on("click", (item: any) => {
-//                 selectionHandler.handleSelection(item, false); // Selects the dataPoint
-//             });
+        console.log('options', behaviorOptions);
+
+        this.options = behaviorOptions;
+        this.selectionHandler = selectionHandler;
+
+        behaviorOptions.legendItems.on('click', (item: any) => {
+            selectionHandler.handleSelection(item, false); // Selects the dataPoint
+        });
 //
 //             if (this.options.lassoSelectorUpdate) {
 //                 this.options.lassoSelectorUpdate(this.options.selection, this.options.pointsTransparencyProperties, this.options.fillPoint, this.options.data, (circles) => {

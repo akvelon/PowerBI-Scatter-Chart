@@ -1,4 +1,4 @@
-import {Selection} from 'd3-selection';
+import {Selection as d3Selection} from 'd3-selection';
 import {ITooltipServiceWrapper} from 'powerbi-visuals-utils-tooltiputils';
 
 interface PlayAxisMeasures {
@@ -76,19 +76,19 @@ export class PlayAxis {
 //     private currentGroupIndex: number;
 //     private valuesType: PlayAxisValueType;
 //
-//     // slider
-//     private sliderEl: HTMLElement;
-//     private $sliderEl: JQuery;
-//
-//     // axis
-//     private axisGroup: d3.Selection<any>;
-//
-//     // play button
-//     private playButtonEl: d3.Selection<any>;
+    // slider
+    private sliderEl: HTMLElement | undefined = undefined;
+    // private $sliderEl: JQuery;
+
+    // axis
+    private axisGroup: d3Selection<null, undefined, null, undefined> | undefined = undefined;
+
+    // play button
+    private playButtonEl: d3Selection<null, undefined, null, undefined> | undefined = undefined;
 //     private playButtonTimer: number;
 //
 //     // caption
-//     private captionGroup: d3.Selection<any>;
+    private captionGroup: d3Selection<null, undefined, null, undefined> | undefined = undefined;
 //     private caption: d3.Selection<SVGElement>;
 //
 //     // visual
@@ -100,66 +100,70 @@ export class PlayAxis {
 //     private pathOwners: VisualDataPoint[];
 //     private pathLinesContainer: d3.Selection<any>;
 //     private pathCirclesContainer: d3.Selection<any>;
-//
-//     // tooltip
-//     private tooltipServiceWrapper: ITooltipServiceWrapper;
-//
+
+    // tooltip
+    private tooltipServiceWrapper: ITooltipServiceWrapper;
+
     constructor(
         mainElement: HTMLElement,
-        mainSvgElement: Selection<SVGSVGElement, unknown, null, undefined>,
+        mainSvgElement: d3Selection<SVGSVGElement, unknown, null, undefined>,
         tooltipServiceWrapper: ITooltipServiceWrapper) {
-//         this.tooltipServiceWrapper = tooltipServiceWrapper;
-//
-//         // slider
-//         this.initSlider(mainElement);
-//
-//         // axis
-//         this.createAxisContainer(mainSvgElement);
-//
-//         // play button
-//         this.initPlayButton(mainElement);
-//
-//         // caption
-//         this.createCaptionElements(mainSvgElement);
-//
-//         // paths
-//         this.initPaths(mainSvgElement);
+        this.tooltipServiceWrapper = tooltipServiceWrapper;
+
+        // slider
+        this.initSlider(mainElement);
+
+        // // axis
+        // this.createAxisContainer(mainSvgElement);
+        //
+        // // play button
+        // this.initPlayButton(mainElement);
+        //
+        // // caption
+        // this.createCaptionElements(mainSvgElement);
+        //
+        // // paths
+        // this.initPaths(mainSvgElement);
     }
 
-//     // Public
-//
-//     enable(): void {
-//         // showing playAxis elements
-//         this.sliderEl.style.display = '';
-//         this.axisGroup.style('display', '');
-//         this.playButtonEl.style('display', '');
-//         this.captionGroup.style('display', '');
-//
-//         this.enabled = true;
-//     }
-//
-//     disable(): void {
-//         // hiding playAxis elements
-//         this.sliderEl.style.display = 'none';
-//         this.axisGroup.style('display', 'none');
-//         this.playButtonEl.style('display', 'none');
-//         this.captionGroup.style('display', 'none');
-//
-//         // showing all the dataPoints
-//         if (this.scatterSelect) {
-//             this.scatterSelect.style({
-//                 display: '',
-//                 opacity: ''
-//             });
-//         }
-//
-//         this.stopAutoPlay();
-//
-//         this.removePaths();
-//
-//         this.enabled = false;
-//     }
-//
+    // Public
+
+    enable(): void {
+        // showing playAxis elements
+        if (this.sliderEl) {
+            this.sliderEl.style.display = '';
+        }
+        this.axisGroup?.style('display', '');
+        this.playButtonEl?.style('display', '');
+        this.captionGroup?.style('display', '');
+
+        this.enabled = true;
+    }
+
+    disable(): void {
+        // hiding playAxis elements
+        if (this.sliderEl) {
+            this.sliderEl.style.display = 'none';
+        }
+        this.axisGroup?.style('display', 'none');
+        this.playButtonEl?.style('display', 'none');
+        this.captionGroup?.style('display', 'none');
+
+        // // showing all the dataPoints
+        // if (this.scatterSelect) {
+        //     this.scatterSelect.style({
+        //         display: '',
+        //         opacity: '',
+        //     });
+        // }
+        //
+        // this.stopAutoPlay();
+        //
+        // this.removePaths();
+
+        this.enabled = false;
+    }
+
 //     isEnabled(): boolean {
 //         return this.enabled;
 //     }
@@ -275,44 +279,44 @@ export class PlayAxis {
 //     }
 //
 //     // End: Visual
-//
-//     // Slider
-//     // Slider is the main thing here which controls the state
-//
-//     private initSlider(mainElement: HTMLElement): void {
-//         // Changing the jQuery's global setting
-//         $.easing._default = 'linear' as any;
-//
-//         this.sliderEl = document.createElement('div');
-//         this.sliderEl.style.display = 'none';
-//         this.$sliderEl = $(this.sliderEl).attr({
-//             id: 'playAxisSlider',
-//             class: 'playAxisSlider'
-//         });
-//
-//         // Creating jQuery UI Slider
-//         // Demo: https://jqueryui.com/slider/
-//         // API: http://api.jqueryui.com/slider/
-//         const jqueryUiSliderParams = {
-//             min: 0,
-//             max: 1,
-//             value: 0,
-//             animate: Constants.Slider.AnimationDuration,
-//             slide: (e, ui) => {
-//                 this.currentGroupIndex = ui.value;
-//                 this.onSlide(+ui.value);
-//             },
-//             change: (e, ui) => {
-//                 this.currentGroupIndex = ui.value;
-//                 this.onChange(+ui.value);
-//             }
-//         };
-//         this.$sliderEl
-//             .css('height', Constants.Slider.Height)
-//             .appendTo(mainElement)
-//             .slider(jqueryUiSliderParams);
-//     }
-//
+
+    // Slider
+    // Slider is the main thing here which controls the state
+
+    private initSlider(mainElement: HTMLElement): void {
+        // Changing the jQuery's global setting
+        // $.easing._default = 'linear' as any;
+
+        // this.sliderEl = document.createElement('div');
+        // this.sliderEl.style.display = 'none';
+        // this.$sliderEl = $(this.sliderEl).attr({
+        //     id: 'playAxisSlider',
+        //     class: 'playAxisSlider'
+        // });
+        //
+        // // Creating jQuery UI Slider
+        // // Demo: https://jqueryui.com/slider/
+        // // API: http://api.jqueryui.com/slider/
+        // const jqueryUiSliderParams = {
+        //     min: 0,
+        //     max: 1,
+        //     value: 0,
+        //     animate: Constants.Slider.AnimationDuration,
+        //     slide: (e, ui) => {
+        //         this.currentGroupIndex = ui.value;
+        //         this.onSlide(+ui.value);
+        //     },
+        //     change: (e, ui) => {
+        //         this.currentGroupIndex = ui.value;
+        //         this.onChange(+ui.value);
+        //     }
+        // };
+        // this.$sliderEl
+        //     .css('height', Constants.Slider.Height)
+        //     .appendTo(mainElement)
+        //     .slider(jqueryUiSliderParams);
+    }
+
 //     private renderSlider(update: PlayAxisUpdateData, measures: PlayAxisMeasures, maxValue: number): void {
 //         this.$sliderEl.css({
 //             top: measures.top
