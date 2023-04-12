@@ -1,47 +1,38 @@
 import powerbi from 'powerbi-visuals-api';
 import {createClassAndSelector} from 'powerbi-visuals-utils-svgutils/lib/cssConstants';
-import {select as d3select, Selection} from 'd3-selection';
-import IVisual = powerbi.extensibility.visual.IVisual;
-import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
-import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
+import {BaseType, select as d3select, selectAll as d3selectAll, Selection} from 'd3-selection';
 import {
     appendClearCatcher,
     IInteractivityService,
 } from 'powerbi-visuals-utils-interactivityutils/lib/interactivityBaseService';
 import {VisualBehavior} from './visualBehavior';
-import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import {
-    createInteractivitySelectionService, SelectableDataPoint,
+    createInteractivitySelectionService,
+    SelectableDataPoint,
 } from 'powerbi-visuals-utils-interactivityutils/lib/interactivitySelectionService';
 import {
     AxesOptions,
     IAxes,
-    IAxesSize, ICategoryData,
+    IAxesSize,
+    ICategoryData,
     IMargin,
     VisualData,
     VisualDataLabelsSettings,
     VisualDataPoint,
-    VisualDataViewObject, VisualMeasureMetadata, VisualMeasureMetadataColumns,
+    VisualDataViewObject,
+    VisualMeasureMetadata,
+    VisualMeasureMetadataColumns,
 } from './visualInterfaces';
 import {createLegend} from 'powerbi-visuals-utils-chartutils/lib/legend/legend';
 import {ILegend, LegendPosition} from 'powerbi-visuals-utils-chartutils/lib/legend/legendInterfaces';
 import {createTooltipServiceWrapper, ITooltipServiceWrapper} from 'powerbi-visuals-utils-tooltiputils';
-import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
 import {PlayAxis} from './playAxisUtil';
-import IViewport = powerbi.IViewport;
-import DataView = powerbi.DataView;
-import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInstancesOptions;
-import VisualObjectInstanceEnumeration = powerbi.VisualObjectInstanceEnumeration;
-import VisualObjectInstance = powerbi.VisualObjectInstance;
-import DataViewObject = powerbi.DataViewObject;
 import {hasGradientRole} from './gradientUtils';
 import {createAxis, isLogScalePossible} from 'powerbi-visuals-utils-chartutils/lib/axis/axis';
 import {axis, axisScale, axisStyle, dataLabelUtils} from 'powerbi-visuals-utils-chartutils';
 import {YAxisPosition} from './yAxisPosition';
 import {AxisType} from './axisType';
-import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 import {ColorHelper} from 'powerbi-visuals-utils-colorutils';
-import IVisualSelectionId = powerbi.visuals.ISelectionId;
 import {VisualSettings} from './settings';
 import {getCategories, getDefinedNumberByCategoryId, getValueFromDataViewValueColumnById} from './categoryUtils';
 import {getMetadata} from './metadataUtils';
@@ -59,26 +50,20 @@ import {
     getPointsTransparencyProperties,
     getSelectionColorSettings,
     getSelectionSaveSettings,
-    getShapesSizeProperty, setPointsTransparencyProperty, setSelectionColorProperty, setSelectionSaveProperty,
+    getShapesSizeProperty,
+    setPointsTransparencyProperty,
+    setSelectionColorProperty,
+    setSelectionSaveProperty,
 } from './formatPaneUtils';
 import {buildLegendData, getLegendProperties, renderLegend, setLegendProperties} from './legendUtils';
-import PrimitiveValue = powerbi.PrimitiveValue;
 import {valueFormatter} from 'powerbi-visuals-utils-formattingutils';
 import {IValueFormatter} from 'powerbi-visuals-utils-formattingutils/lib/src/valueFormatter';
-import CustomVisualOpaqueIdentity = powerbi.visuals.CustomVisualOpaqueIdentity;
-import DataViewObjects = powerbi.DataViewObjects;
 import {dataViewObjects} from 'powerbi-visuals-utils-dataviewutils';
 import {PropertiesOfCapabilities} from './properties';
 import {ISize} from 'powerbi-visuals-utils-svgutils/lib/shapes/shapesInterfaces';
-import VisualUpdateType = powerbi.VisualUpdateType;
-import DataViewValueColumnGroup = powerbi.DataViewValueColumnGroup;
-import DataViewCategoryColumn = powerbi.DataViewCategoryColumn;
-import DataViewCategorical = powerbi.DataViewCategorical;
-import DataViewMetadata = powerbi.DataViewMetadata;
-import DataViewValueColumns = powerbi.DataViewValueColumns;
-import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
 import {pixelConverter as PixelConverter} from 'powerbi-visuals-utils-typeutils';
 import {
+    getBubbleRadius,
     getLineStyleParam,
     getMeasureValue,
     getObjectPropertiesLength,
@@ -88,16 +73,37 @@ import {
 import {hasRoleInValueColumn} from 'powerbi-visuals-utils-dataviewutils/lib/dataRoleHelper';
 import {createTooltipInfo, TooltipSeriesDataItem} from './tooltipBuilder';
 import {translate as svgTranslate} from 'powerbi-visuals-utils-svgutils/lib/manipulation';
-import {min as d3min, max as d3max} from 'd3-array';
-import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
-import {scaleLinear, scalePoint} from 'd3-scale';
+import {max as d3max, min as d3min} from 'd3-array';
+import {scaleLinear} from 'd3-scale';
 import {IAxisProperties} from 'powerbi-visuals-utils-chartutils/lib/axis/axisInterfaces';
-import DataViewPropertyValue = powerbi.DataViewPropertyValue;
 import {setDatapointVisibleAngleRange} from './labelLayoutUtils';
-import {selectAll as d3selectAll} from 'd3-selection';
 
 import '../style/visual.less';
 import {lassoSelectorInit} from './selectionUtil';
+import IVisual = powerbi.extensibility.visual.IVisual;
+import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
+import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISandboxExtendedColorPalette = powerbi.extensibility.ISandboxExtendedColorPalette;
+import IViewport = powerbi.IViewport;
+import DataView = powerbi.DataView;
+import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInstancesOptions;
+import VisualObjectInstanceEnumeration = powerbi.VisualObjectInstanceEnumeration;
+import VisualObjectInstance = powerbi.VisualObjectInstance;
+import DataViewObject = powerbi.DataViewObject;
+import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
+import IVisualSelectionId = powerbi.visuals.ISelectionId;
+import PrimitiveValue = powerbi.PrimitiveValue;
+import CustomVisualOpaqueIdentity = powerbi.visuals.CustomVisualOpaqueIdentity;
+import DataViewObjects = powerbi.DataViewObjects;
+import VisualUpdateType = powerbi.VisualUpdateType;
+import DataViewValueColumnGroup = powerbi.DataViewValueColumnGroup;
+import DataViewCategoryColumn = powerbi.DataViewCategoryColumn;
+import DataViewCategorical = powerbi.DataViewCategorical;
+import DataViewMetadata = powerbi.DataViewMetadata;
+import DataViewValueColumns = powerbi.DataViewValueColumns;
+import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
+import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 
 class Selectors {
     static readonly MainSvg = createClassAndSelector('lasso-scatter-chart-svg');
@@ -179,7 +185,8 @@ export class Visual implements IVisual {
     private dataView: DataView | null = null;
     private settings: VisualSettings | null = null;
     private axisLabelsGroup: Selection<null, unknown, null, unknown> | null = null; // string
-    private scatterGroupSelect: Selection<null, unknown, null, unknown> | null = null; // VisualDataPoint[]
+    private scatterGroupSelect: Selection<BaseType, VisualDataPoint[], SVGSVGElement, unknown> | null = null;
+    private scatterSelect: Selection<BaseType, VisualDataPoint, BaseType, unknown> | null = null;
     private legendProperties: DataViewObject | null = null;
     private categoryAxisProperties: DataViewObject | null = null;
     private valueAxisProperties: DataViewObject | null = null;
@@ -194,7 +201,6 @@ export class Visual implements IVisual {
 
 
 //         private labelBackgroundGraphicsContext: d3.selection.Update<any>;
-//         private scatterSelect: d3.Selection<any>;
 
 
 //         private isSelectionRestored: boolean = false;
@@ -712,7 +718,7 @@ export class Visual implements IVisual {
                     visualMargin.top));
 
             this.renderAxes(this.data);
-            // this.renderVisual(this.data);
+            this.renderVisual(this.data);
 //             this.renderAxesLabels(
 //                 metadata.axesLabels,
 //                 this.legend.getMargins().height + xTickOffset,
@@ -1030,46 +1036,101 @@ export class Visual implements IVisual {
         return () => formatter.format(value);
     }
 
-//         private renderVisual(data: VisualData) {
-//             const colorHelper = new ColorHelper(this.host.colorPalette);
-//             const dataPoints: VisualDataPoint[] = data.dataPoints.filter(d =>
-//                 (data.xCol != null && d.x == null) || (data.yCol != null && d.y == null) ? false : true
-//             );
-//
-//             // Select all bar groups in our chart and bind them to our categories.
-//             // Each group will contain a set of bars, one for each of the values in category.
-//             this.scatterGroupSelect = this.visualSvgGroupMarkers.selectAll(Selectors.ScatterGroup.selectorName)
-//                 .data([dataPoints]);
-//
-//             // When a new category added, create a new SVG group for it.
-//             this.scatterGroupSelect.enter()
-//                 .append("g")
-//                 .attr("class", Selectors.ScatterGroup.className);
-//
-//             // For removed categories, remove the SVG group.
-//             this.scatterGroupSelect.exit()
-//                 .remove();
-//
-//             // Now we bind each SVG group to the values in corresponding category.
-//             // To keep the length of the values array, we transform each value into object,
-//             // that contains both value and total count of all values in this category.
-//             const scatterSelect = this.scatterGroupSelect
-//                 .selectAll(Selectors.ScatterDot.selectorName)
-//                 .data(dataPoints);
-//
-//             this.scatterSelect = scatterSelect;
-//
-//             // For each new value, we create a new rectange.
-//             scatterSelect.enter().append("circle")
-//                 .attr("class", Selectors.ScatterDot.className);
-//
-//             // Remove rectangles, that no longer have matching values.
-//             scatterSelect.exit()
-//                 .remove();
-//
-//             // Set the size and position of existing rectangles.
-//             scatterSelect
-//                 .attr("cx", d => this.getBubblePositionX(data.axes.x.scale, d.x))
+    // eslint-disable-next-line max-lines-per-function
+    private renderVisual(data: VisualData) {
+        const colorHelper = new ColorHelper(this.host.colorPalette);
+        const dataPoints: VisualDataPoint[] = data.dataPoints.filter(d =>
+            !((data.xCol != null && d.x == null) || (data.yCol != null && d.y == null)),
+        );
+
+        console.log('dataPoints', dataPoints);
+
+        // Select all bar groups in our chart and bind them to our categories.
+        // Each group will contain a set of bars, one for each of the values in category.
+        this.scatterGroupSelect = this.visualSvgGroupMarkers
+            .selectAll(Selectors.ScatterGroup.selectorName)
+            .data([dataPoints]);
+
+        // For removed categories, remove the SVG group.
+        this.scatterGroupSelect.exit()
+            .remove();
+
+        // When a new category added, create a new SVG group for it.
+        this.scatterGroupSelect.enter()
+            .append('g')
+            .classed(Selectors.ScatterGroup.className, true);
+
+        // Now we bind each SVG group to the values in corresponding category.
+        // To keep the length of the values array, we transform each value into object,
+        // that contains both value and total count of all values in this category.
+        this.scatterSelect = this.scatterGroupSelect.merge(this.scatterGroupSelect.enter())
+            .selectAll(Selectors.ScatterGroup.selectorName)
+            .selectAll(Selectors.ScatterDot.selectorName)
+            .data((d: VisualDataPoint[]) => d);
+
+        // Remove rectangles, that no longer have matching values.
+        this.scatterSelect.exit()
+            .remove();
+
+        // For each new value, we create a new circle.
+        this.scatterSelect.enter()
+            .append('circle')
+            .classed(Selectors.ScatterDot.className, true);
+
+        this.scatterSelect.merge(this.scatterSelect.enter())
+            .selectAll<BaseType, VisualDataPoint>(Selectors.ScatterDot.selectorName)
+            .attr('cx', d => this.getBubblePositionX(data.axes.x.scale, d.x))
+            .attr('cy', d => this.getBubblePositionY(data.axes.y.scale, d.y))
+            .attr('r', d => getBubbleRadius(d.radius.value, data.size, data.sizeScale, <number>this.shapesSize?.size))
+            .style('fill-opacity', d => this.fillPoint ? this.getFillOpacity(d) : 0)
+            .style('fill', d => d.fill ?? null);
+
+        //     'stroke-opacity': d => {
+        //         if (this.fillPoint) {
+        //             if (d.selected) {
+        //                 return 1;
+        //             } else {
+        //                 return 0;
+        //             }
+        //         } else {
+        //             return this.getFillOpacity(d);
+        //         }
+        //     },
+        //     'stroke': d => {
+        //         if (this.fillPoint) {
+        //             if (d.selected) {
+        //                 return Visual.DefaultStrokeSelectionColor;
+        //             }
+        //         }
+        //         return d.fill;
+        //     },
+        //     'stroke-width': d => {
+        //         if (d.selected) {
+        //             return Visual.DefaultStrokeSelectionWidth;
+        //         }
+        //
+        //         return Visual.DefaultStrokeWidth;
+        //     },
+        // })
+        // .each(function (d, i) {
+        //     d.index = i;
+        // });
+
+
+        // this.scatterSelect.exit()
+        //     .remove();
+        //
+
+        // const scatterSelectEnter = this.scatterSelect.enter()
+        //     // .selectAll(Selectors.ScatterGroup.selectorName)
+        //     .append('circle')
+        //     .classed(Selectors.ScatterDot.className, true);
+        //
+        // console.log('scatterSelectEnter', this.scatterSelect.merge(this.scatterSelect.enter()).nodes());
+
+        // // Set the size and position of existing rectangles.
+        // scatterSelectEnter.merge(this.scatterSelect)
+        //     .attr("cx", d => this.getBubblePositionX(data.axes.x.scale, d.x))
 //                 .attr("cy", d => this.getBubblePositionY(data.axes.y.scale, d.y))
 //                 .attr("r", d => visualUtils.getBubbleRadius(d.radius.value, data.size, data.sizeScale, <number>this.shapesSize.size))
 //                 .style({
@@ -1125,8 +1186,8 @@ export class Visual implements IVisual {
 //                 visualUtils.passSavedPointsToLassoUtil(this.data.dataPoints);
 //                 this.isSelectionRestored = true;
 //             }
-//         }
-//
+    }
+
 //         private bindInteractivityService(
 //             dataPointsSelection: d3.Selection<VisualDataPoint>,
 //             dataPoints: VisualDataPoint[]): void {
@@ -1150,17 +1211,17 @@ export class Visual implements IVisual {
 //
 //             this.interactivityService.bind(dataPoints, this.behavior, behaviorOptions);
 //         }
-//
-//         private getFillOpacity(dataPoint: VisualDataPoint): number {
-//             let pointsTransparencyProperties: DataViewObject = this.pointsTransparencyProperties;
-//             if (dataPoint.selected) {
-//                 return (1 - <number>pointsTransparencyProperties.selected / 100);
-//             } else if (this.interactivityService.hasSelection()) {
-//                 return 1 - <number>pointsTransparencyProperties.unselected / 100;
-//             }
-//
-//             return 1 - <number>pointsTransparencyProperties.regular / 100;
-//         }
+
+    private getFillOpacity(dataPoint: VisualDataPoint): number {
+        const pointsTransparencyProperties = this.pointsTransparencyProperties;
+        if (dataPoint.selected) {
+            return (1 - <number>pointsTransparencyProperties?.selected / 100);
+        } else if (this.interactivityService.hasSelection()) {
+            return 1 - <number>pointsTransparencyProperties?.unselected / 100;
+        }
+
+        return 1 - <number>pointsTransparencyProperties?.regular / 100;
+    }
 
     private addUnitTypeToAxisLabel(xAxis: IAxisProperties, yAxis: IAxisProperties): void {
         let unitType = getUnitType(xAxis);
@@ -1909,21 +1970,21 @@ export class Visual implements IVisual {
         instances.push(instance);
     }
 
-//         private getBubblePositionX(scale, item) {
-//             if (item !== null) {
-//                 return scale(item);
-//             } else {
-//                 return Math.round(this.data.size.width / 2);
-//             }
-//         }
-//
-//         private getBubblePositionY(scale, item) {
-//             if (item !== null) {
-//                 return scale(item);
-//             } else {
-//                 return Math.round(this.data.size.height / 2);
-//             }
-//         }
+    private getBubblePositionX(scale: (item: number | null) => number, item: number | null): number {
+        if (item !== null) {
+            return scale(item);
+        } else {
+            return Math.round((this.data?.size.width ?? 0) / 2);
+        }
+    }
+
+    private getBubblePositionY(scale: (item: number | null) => number, item: number | null): number {
+        if (item !== null) {
+            return scale(item);
+        } else {
+            return Math.round((this.data?.size.height ?? 0) / 2);
+        }
+    }
 
     private getBubbleSizeScale(items: VisualDataPoint[]) {
         let minRange = d3min(items, d => <number>d.radius.value);
