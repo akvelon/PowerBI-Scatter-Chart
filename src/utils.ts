@@ -10,6 +10,7 @@ import {LabelMargin} from './labelLayoutUtils';
 import PrimitiveValue = powerbi.PrimitiveValue;
 import {ISize} from 'powerbi-visuals-utils-svgutils/lib/shapes/shapesInterfaces';
 import {scaleLinear, ScaleLinear} from 'd3-scale';
+import {LineStyle} from 'powerbi-visuals-utils-chartutils/lib/legend/legendInterfaces';
 
 const minRatioBubbleSize = 120;
 const DisplayUnitValue: number = 1;
@@ -140,24 +141,19 @@ export function hasIntersection(
 //             return 0;
 //     }
 // }
-//
-// export function getLineStyleParam(lineStyle) {
-//     let strokeDasharray;
-//
-//     switch (lineStyle) {
-//         case "solid":
-//             strokeDasharray = "none";
-//             break;
-//         case "dashed":
-//             strokeDasharray = "7, 5";
-//             break;
-//         case "dotted":
-//             strokeDasharray = "2, 2";
-//             break;
-//     }
-//
-//     return strokeDasharray;
-// }
+
+export function getLineStyleParam(lineStyle: string): string | null {
+    switch (lineStyle) {
+        case 'solid':
+            return 'none';
+        case 'dashed':
+            return '7, 5';
+        case 'dotted':
+            return '2, 2';
+    }
+
+    return null;
+}
 
 export function getUnitType(axisProperties: IAxisProperties): string | null {
     if (axisProperties.formatter

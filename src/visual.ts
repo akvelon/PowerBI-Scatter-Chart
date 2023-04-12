@@ -78,7 +78,13 @@ import DataViewMetadata = powerbi.DataViewMetadata;
 import DataViewValueColumns = powerbi.DataViewValueColumns;
 import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
 import {pixelConverter as PixelConverter} from 'powerbi-visuals-utils-typeutils';
-import {getMeasureValue, getObjectPropertiesLength, getSizeRangeForGroups, getUnitType} from './utils';
+import {
+    getLineStyleParam,
+    getMeasureValue,
+    getObjectPropertiesLength,
+    getSizeRangeForGroups,
+    getUnitType,
+} from './utils';
 import {hasRoleInValueColumn} from 'powerbi-visuals-utils-dataviewutils/lib/dataRoleHelper';
 import {createTooltipInfo, TooltipSeriesDataItem} from './tooltipBuilder';
 import {translate as svgTranslate} from 'powerbi-visuals-utils-svgutils/lib/manipulation';
@@ -626,80 +632,84 @@ export class Visual implements IVisual {
             };
 
             this.data = data;
-//             this.renderAxes(data);
-//
-//             let ytickText = this.yAxisSvgGroup.selectAll("text")[0];
-//             let xtickText = this.xAxisSvgGroup.selectAll("text")[0];
-//
-//             const yTickWidth: Array<number> = [];
-//             const xTickHeight: Array<number> = [];
-//
-//             ytickText.forEach((item: any) => {
-//                 let dimension = item.getBoundingClientRect();
-//                 yTickWidth.push(dimension.width);
-//             });
-//
-//             xtickText.forEach((item: any) => {
-//                 let dimension = item.getBoundingClientRect();
-//                 xTickHeight.push(dimension.height);
-//             });
-//
-//             if (yTickWidth.length === 0) {
-//                 yTickWidth.push(0);
-//             }
-//
-//             if (xTickHeight.length === 0) {
-//                 xTickHeight.push(0);
-//             }
-//
-//             let yTickOffset: number = d3.max(yTickWidth) + (valueAxisProperties.showAxisTitle ? parseInt(valueAxisProperties.titleFontSize.toString()) : 0);
-//             let xTickOffset: number = d3.max(xTickHeight) + (categoryAxisProperties.showAxisTitle ? parseInt(categoryAxisProperties.titleFontSize.toString()) : 0);
-//
-//             // Calculate the resulting size of visual
-//             visualSize.width = visualSize.width - yTickOffset;
-//             visualSize.height = visualSize.height - xTickOffset;
-//             const axesUpdated = this.createD3Axes(visualSize, dataPoints, metadata.cols, axesOptions);
-//
-//             this.data.size = visualSize;
-//             this.data.axes = axesUpdated;
-//
-//             let legendXOffset = this.legend.getOrientation() === legendModule.LegendPosition.Right ||
-//                 this.legend.getOrientation() === legendModule.LegendPosition.RightCenter ? 0 : this.legend.getMargins().width;
-//             let legendYOffset = this.legend.getOrientation() === legendModule.LegendPosition.Bottom ||
-//                 this.legend.getOrientation() === legendModule.LegendPosition.BottomCenter ? 0 : this.legend.getMargins().height;
-//
-//             this.data.axesDimensions = {
-//                 x: visualMargin.left + axesSize.yAxisWidth + yTickOffset + legendXOffset,
-//                 y: visualMargin.top + legendYOffset,
-//                 width: visualSize.width,
-//                 height: visualSize.height
-//             };
-//
-//             // Set width and height of visual to SVG group
-//             this.visualSvgGroupMarkers
-//                 .attr("width", visualSize.width)
-//                 .attr("height", visualSize.height);
-//
-//             // Move SVG group elements to appropriate positions.
-//             this.visualSvgGroup.attr(
-//                 "transform",
-//                 svg.translate(
-//                     visualMargin.left + axesSize.yAxisWidth + yTickOffset,
-//                     visualMargin.top));
-//
-//             this.xAxisSvgGroup.attr(
-//                 "transform",
-//                 svg.translate(
-//                     visualMargin.left + axesSize.yAxisWidth + yTickOffset,
-//                     visualMargin.top + visualSize.height));
-//             this.yAxisSvgGroup.attr(
-//                 "transform",
-//                 svg.translate(
-//                     visualMargin.left + axesSize.yAxisWidth + yTickOffset,
-//                     visualMargin.top));
-//
-//             this.renderAxes(this.data);
-//             this.renderVisual(this.data);
+            this.renderAxes(data);
+
+            const ytickText = this.yAxisSvgGroup.selectAll('text').nodes();
+            const xtickText = this.xAxisSvgGroup.selectAll('text').nodes();
+
+            const yTickWidth: Array<number> = [];
+            const xTickHeight: Array<number> = [];
+
+            ytickText.forEach((item: any) => {
+                const dimension = item.getBoundingClientRect();
+                yTickWidth.push(dimension.width);
+            });
+
+            xtickText.forEach((item: any) => {
+                const dimension = item.getBoundingClientRect();
+                xTickHeight.push(dimension.height);
+            });
+
+            if (yTickWidth.length === 0) {
+                yTickWidth.push(0);
+            }
+
+            if (xTickHeight.length === 0) {
+                xTickHeight.push(0);
+            }
+
+            const yTickOffset = (d3max(yTickWidth) ?? 0) + (valueAxisProperties.showAxisTitle ? parseInt(valueAxisProperties.titleFontSize.toString()) : 0);
+            const xTickOffset = (d3max(xTickHeight) ?? 0) + (categoryAxisProperties.showAxisTitle ? parseInt(categoryAxisProperties.titleFontSize.toString()) : 0);
+
+            // Calculate the resulting size of visual
+            visualSize.width = visualSize.width - yTickOffset;
+            visualSize.height = visualSize.height - xTickOffset;
+
+            const axesUpdated = this.createD3Axes(visualSize, dataPoints, metadata.cols, axesOptions);
+            this.data.size = visualSize;
+            this.data.axes = axesUpdated;
+
+            const legendXOffset = this.legend.getOrientation() === LegendPosition.Right
+            || this.legend.getOrientation() === LegendPosition.RightCenter
+                ? 0
+                : this.legend.getMargins().width;
+            const legendYOffset = this.legend.getOrientation() === LegendPosition.Bottom
+            || this.legend.getOrientation() === LegendPosition.BottomCenter
+                ? 0
+                : this.legend.getMargins().height;
+
+            this.data.axesDimensions = {
+                x: visualMargin.left + axesSize.yAxisWidth + yTickOffset + legendXOffset,
+                y: visualMargin.top + legendYOffset,
+                width: visualSize.width,
+                height: visualSize.height,
+            };
+
+            // Set width and height of visual to SVG group
+            this.visualSvgGroupMarkers
+                .attr('width', visualSize.width)
+                .attr('height', visualSize.height);
+
+            // Move SVG group elements to appropriate positions.
+            this.visualSvgGroup.attr(
+                'transform',
+                svgTranslate(
+                    visualMargin.left + axesSize.yAxisWidth + yTickOffset,
+                    visualMargin.top));
+
+            this.xAxisSvgGroup.attr(
+                'transform',
+                svgTranslate(
+                    visualMargin.left + axesSize.yAxisWidth + yTickOffset,
+                    visualMargin.top + visualSize.height));
+            this.yAxisSvgGroup.attr(
+                'transform',
+                svgTranslate(
+                    visualMargin.left + axesSize.yAxisWidth + yTickOffset,
+                    visualMargin.top));
+
+            this.renderAxes(this.data);
+            // this.renderVisual(this.data);
 //             this.renderAxesLabels(
 //                 metadata.axesLabels,
 //                 this.legend.getMargins().height + xTickOffset,
@@ -1183,115 +1193,109 @@ export class Visual implements IVisual {
         }
     }
 
-//         private renderAxes(data: VisualData) {
-//             // Before rendering an axis, we need to remove an old one.
-//             // Otherwise, our visual will be cluttered by multiple axis objects, which can
-//             // affect performance of our visual.
-//
-//             // Why axis doesn't need to remove?
-//             // this.xAxisSvgGroup.selectAll("*").remove();
-//             // this.yAxisSvgGroup.selectAll("*").remove();
-//             // Now we call the axis funciton, that will render an axis on our visual.
-//             if (this.categoryAxisProperties["show"] !== undefined && !this.categoryAxisProperties["show"]) {
-//                 this.xAxisSvgGroup.selectAll("*").remove();
-//             } else {
-//                 this.xAxisSvgGroup.call(data.axes.x.axis);
-//
-//                 let axisText = this.xAxisSvgGroup.selectAll("g").selectAll("text");
-//                 let axisLines = this.xAxisSvgGroup.selectAll("g").selectAll("line");
-//
-//                 let color: DataViewPropertyValue = this.categoryAxisProperties.axisColor;
-//                 let fontSize: string = PixelConverter.toString(this.categoryAxisProperties.fontSize as number);
-//                 let fontFamily: string = this.categoryAxisProperties.fontFamily as string;
-//                 let gridlinesColor: DataViewPropertyValue = this.categoryAxisProperties.gridlinesColor;
-//                 let strokeWidth: string = this.categoryAxisProperties.strokeWidth + "px";
-//                 let showGridlines: DataViewPropertyValue = this.categoryAxisProperties.showGridlines;
-//                 let lineStyle: DataViewPropertyValue = this.categoryAxisProperties.lineStyle;
-//
-//                 if (color) {
-//                     axisText.style({ "fill": color as string, "stroke": "none" });
-//                 }
-//
-//                 if (fontSize) {
-//                     axisText.style({ "font-size": fontSize });
-//                 }
-//
-//                 if (fontFamily) {
-//                     axisText.style({ "font-family": fontFamily });
-//                 }
-//
-//                 if (gridlinesColor) {
-//                     axisLines.style({ "stroke": gridlinesColor as string });
-//                 }
-//
-//                 if (strokeWidth) {
-//                     axisLines.style({ "stroke-width": strokeWidth });
-//                 }
-//
-//                 if (lineStyle) {
-//                     let strokeDasharray = visualUtils.getLineStyleParam(lineStyle);
-//
-//                     axisLines.style("stroke-dasharray", (strokeDasharray));
-//                 }
-//
-//                 if (showGridlines) {
-//                     axisLines.style("opacity", "1");
-//                 } else {
-//                     axisLines.style("opacity", "0");
-//                 }
-//             }
-//
-//             if (this.valueAxisProperties["show"] !== undefined && !this.valueAxisProperties["show"]) {
-//                 this.yAxisSvgGroup.selectAll("*").remove();
-//             } else {
-//                 this.yAxisSvgGroup.call(data.axes.y.axis);
-//
-//                 let axisText = this.yAxisSvgGroup.selectAll("g").selectAll("text");
-//                 let axisLines = this.yAxisSvgGroup.selectAll("g").selectAll("line");
-//
-//                 let color: DataViewPropertyValue = this.valueAxisProperties.axisColor;
-//                 let fontSize: string = PixelConverter.toString(this.valueAxisProperties.fontSize as number);
-//                 let fontFamily: string = this.valueAxisProperties.fontFamily as string;
-//                 let gridlinesColor: DataViewPropertyValue = this.valueAxisProperties.gridlinesColor;
-//                 let strokeWidth: string = this.valueAxisProperties.strokeWidth + "px";
-//                 let showGridlines: DataViewPropertyValue = this.valueAxisProperties.showGridlines;
-//                 let lineStyle: DataViewPropertyValue = this.valueAxisProperties.lineStyle;
-//
-//                 if (color) {
-//                     axisText.style({ "fill": color as string, "stroke": "none" });
-//                 }
-//
-//                 if (fontSize) {
-//                     axisText.style({ "font-size": fontSize });
-//                 }
-//
-//                 if (fontFamily) {
-//                     axisText.style({ "font-family": fontFamily });
-//                 }
-//
-//                 if (gridlinesColor) {
-//                     axisLines.style({ "stroke": gridlinesColor as string });
-//                 }
-//
-//                 if (strokeWidth) {
-//                     axisLines.style({ "stroke-width": strokeWidth });
-//                 }
-//
-//                 if (lineStyle) {
-//                     let strokeDasharray = visualUtils.getLineStyleParam(lineStyle);
-//
-//                     axisLines.style("stroke-dasharray", (strokeDasharray));
-//                 }
-//
-//
-//                 if (showGridlines) {
-//                     axisLines.style("opacity", "1");
-//                 } else {
-//                     axisLines.style("opacity", "0");
-//                 }
-//             }
-//         }
-//
+    // eslint-disable-next-line max-lines-per-function
+    private renderAxes(data: VisualData) {
+        // Before rendering an axis, we need to remove an old one.
+        // Otherwise, our visual will be cluttered by multiple axis objects, which can
+        // affect performance of our visual.
+
+        // Why axis doesn't need to remove?
+        // this.xAxisSvgGroup.selectAll("*").remove();
+        // this.yAxisSvgGroup.selectAll("*").remove();
+        // Now we call the axis funciton, that will render an axis on our visual.
+        if (this.categoryAxisProperties?.['show'] !== undefined && !this.categoryAxisProperties['show']) {
+            this.xAxisSvgGroup.selectAll('*').remove();
+        } else {
+            this.xAxisSvgGroup.call(data.axes.x.axis);
+
+            const axisText = this.xAxisSvgGroup.selectAll('g').selectAll('text');
+            const axisLines = this.xAxisSvgGroup.selectAll('g').selectAll('line');
+
+            const color = <string>this.categoryAxisProperties?.axisColor;
+            const fontSize = PixelConverter.toString(<number>this.categoryAxisProperties?.fontSize);
+            const fontFamily = <string>this.categoryAxisProperties?.fontFamily;
+            const gridlinesColor = <string>this.categoryAxisProperties?.gridlinesColor;
+            const strokeWidth = PixelConverter.toString(<number>this.categoryAxisProperties?.strokeWidth);
+            const showGridlines = this.categoryAxisProperties?.showGridlines;
+            const lineStyle = <string>this.categoryAxisProperties?.lineStyle;
+
+            if (color) {
+                axisText
+                    .style('fill', color)
+                    .style('stroke', 'none');
+            }
+
+            if (fontSize) {
+                axisText.style('font-size', fontSize);
+            }
+
+            if (fontFamily) {
+                axisText.style('font-family', fontFamily);
+            }
+
+            if (gridlinesColor) {
+                axisLines.style('stroke', gridlinesColor);
+            }
+
+            if (strokeWidth) {
+                axisLines.style('stroke-width', strokeWidth);
+            }
+
+            if (lineStyle) {
+                const strokeDasharray = getLineStyleParam(lineStyle);
+                axisLines.style('stroke-dasharray', () => strokeDasharray);
+            }
+
+            axisLines.style('opacity', showGridlines ? '1' : '0');
+        }
+
+        if (this.valueAxisProperties?.['show'] !== undefined && !this.valueAxisProperties['show']) {
+            this.yAxisSvgGroup.selectAll('*').remove();
+        } else {
+            this.yAxisSvgGroup.call(data.axes.y.axis);
+
+            const axisText = this.yAxisSvgGroup.selectAll('g').selectAll('text');
+            const axisLines = this.yAxisSvgGroup.selectAll('g').selectAll('line');
+
+            const color = <string>this.valueAxisProperties?.axisColor;
+            const fontSize = PixelConverter.toString(<number>this.valueAxisProperties?.fontSize);
+            const fontFamily = this.valueAxisProperties?.fontFamily as string;
+            const gridlinesColor = <string>this.valueAxisProperties?.gridlinesColor;
+            const strokeWidth = PixelConverter.toString(<number>this.valueAxisProperties?.strokeWidth);
+            const showGridlines = this.valueAxisProperties?.showGridlines;
+            const lineStyle = <string>this.valueAxisProperties?.lineStyle;
+
+            if (color) {
+                axisText
+                    .style('fill', color)
+                    .style('stroke', 'none');
+            }
+
+            if (fontSize) {
+                axisText.style('font-size', fontSize);
+            }
+
+            if (fontFamily) {
+                axisText.style('font-family', fontFamily);
+            }
+
+            if (gridlinesColor) {
+                axisLines.style('stroke', gridlinesColor);
+            }
+
+            if (strokeWidth) {
+                axisLines.style('stroke-width', strokeWidth);
+            }
+
+            if (lineStyle) {
+                const strokeDasharray = getLineStyleParam(lineStyle);
+                axisLines.style('stroke-dasharray', () => strokeDasharray);
+            }
+
+            axisLines.style('opacity', showGridlines ? '1' : '0');
+        }
+    }
+
 //         private renderAxesLabels(
 //             axisLabels: VisualAxesLabels,
 //             legendMargin: number,
@@ -1446,7 +1450,11 @@ export class Visual implements IVisual {
 //         }
 
     // eslint-disable-next-line max-lines-per-function
-    private createD3Axes(visualSize: ISize, items: VisualDataPoint[], metaDataColumn: VisualMeasureMetadataColumns, options: AxesOptions): IAxes {
+    private createD3Axes(
+        visualSize: ISize,
+        items: VisualDataPoint[],
+        metaDataColumn: VisualMeasureMetadataColumns,
+        options: AxesOptions): IAxes {
         // Create ordinal scale for X axis.
         let dataDomainMinX: number = d3min(items, d => <number>d.x) ?? Visual.DefaultDataDomainMin;
         let dataDomainMaxX: number = d3max(items, d => <number>d.x) ?? Visual.DefaultDataDomainMin;
