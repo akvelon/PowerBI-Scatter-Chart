@@ -1,50 +1,17 @@
-// /*
-//  *  Power BI Visualizations
-//  *
-//  *  Copyright (c) Microsoft Corporation
-//  *  All rights reserved.
-//  *  MIT License
-//  *
-//  *  Permission is hereby granted, free of charge, to any person obtaining a copy
-//  *  of this software and associated documentation files (the ""Software""), to deal
-//  *  in the Software without restriction, including without limitation the rights
-//  *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-//  *  copies of the Software, and to permit persons to whom the Software is
-//  *  furnished to do so, subject to the following conditions:
-//  *
-//  *  The above copyright notice and this permission notice shall be included in
-//  *  all copies or substantial portions of the Software.
-//  *
-//  *  THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-//  *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-//  *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-//  *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//  *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-//  *  THE SOFTWARE.
-//  */
-//
-// import powerbiApi from "powerbi-visuals-api";
-// import { pixelConverter } from "powerbi-visuals-utils-typeutils";
-// import { dataLabelUtils, dataLabelInterfaces } from "powerbi-visuals-utils-chartutils";
-// import { IAxes, ISize, VisualData, VisualDataLabelsSettings, VisualDataPoint, VisualLabelsDelta } from "./visualInterfaces";
-// import * as svg from "powerbi-visuals-utils-svgutils";
-// import * as d3 from "d3-selection";
-//
-// import ILabelLayout = dataLabelInterfaces.ILabelLayout;
-// import IViewport = powerbiApi.IViewport;
-// import NumberRange = powerbiApi.NumberRange;
-// import getLabelFormattedText = dataLabelUtils.getLabelFormattedText;
-// import CssConstants = svg.CssConstants;
-// import * as visualUtils from './utils';
-//
-// export const DefaultPosition: number = 0;
-// export const LabelMargin: number = 5;
-// export const DataLabelXOffset: number = 2;
-// export const DataLabelYOffset: number = 1.8;
-// const DataLabelBorderRadius: number = 4;
-// const DataLabelBackgroundOffset: number = 5;
-//
+import {ISize} from 'powerbi-visuals-utils-svgutils/lib/shapes/shapesInterfaces';
+import {IAxes, VisualDataPoint} from './visualInterfaces';
+import {ScaleLinear} from 'd3-scale';
+import powerbi from 'powerbi-visuals-api';
+import DataViewObject = powerbi.DataViewObject;
+import {getVisibleAngleRange} from './utils';
+
+export const DefaultPosition: number = 0;
+export const LabelMargin: number = 5;
+export const DataLabelXOffset: number = 2;
+export const DataLabelYOffset: number = 1.8;
+const DataLabelBorderRadius: number = 4;
+const DataLabelBackgroundOffset: number = 5;
+
 // module Selectors {
 //     export const labelBackgroundGroup = CssConstants.createClassAndSelector("labelBackgroundGroup");
 //     export const labelBackground = CssConstants.createClassAndSelector("labelBackground");
@@ -421,15 +388,20 @@
 //         });
 //
 // }
-//
-// export function setDatapointVisibleAngleRange(dataPoints: VisualDataPoint[], axes, size, sizeScale, shapesSize): VisualDataPoint[] {
-//     let clonedDataPoins = dataPoints.map(dataPoint => {
-//         let angleRange = visualUtils.getVisibleAngleRange(axes, dataPoint.x, dataPoint.y, size, dataPoint.radius.value, sizeScale, shapesSize);
-//         return {
-//             ...dataPoint,
-//             angleRange
-//         };
-//     });
-//
-//     return clonedDataPoins;
-// }
+
+export function setDatapointVisibleAngleRange(
+    dataPoints: VisualDataPoint[],
+    axes: IAxes,
+    size: ISize,
+    sizeScale: ScaleLinear<number, number, never>,
+    shapesSize: number): VisualDataPoint[] {
+    const clonedDataPoins = dataPoints.map(dataPoint => {
+        const angleRange = getVisibleAngleRange(axes, dataPoint.x, dataPoint.y, size, dataPoint.radius.value, sizeScale, shapesSize);
+        return {
+            ...dataPoint,
+            angleRange,
+        };
+    });
+
+    return clonedDataPoins;
+}

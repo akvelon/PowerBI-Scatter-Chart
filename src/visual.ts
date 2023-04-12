@@ -35,8 +35,8 @@ import VisualObjectInstanceEnumeration = powerbi.VisualObjectInstanceEnumeration
 import VisualObjectInstance = powerbi.VisualObjectInstance;
 import DataViewObject = powerbi.DataViewObject;
 import {hasGradientRole} from './gradientUtils';
-import {isLogScalePossible} from 'powerbi-visuals-utils-chartutils/lib/axis/axis';
-import {axisScale, axisStyle, dataLabelUtils} from 'powerbi-visuals-utils-chartutils';
+import {createAxis, isLogScalePossible} from 'powerbi-visuals-utils-chartutils/lib/axis/axis';
+import {axis, axisScale, axisStyle, dataLabelUtils} from 'powerbi-visuals-utils-chartutils';
 import {YAxisPosition} from './yAxisPosition';
 import {AxisType} from './axisType';
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
@@ -78,17 +78,19 @@ import DataViewMetadata = powerbi.DataViewMetadata;
 import DataViewValueColumns = powerbi.DataViewValueColumns;
 import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
 import {pixelConverter as PixelConverter} from 'powerbi-visuals-utils-typeutils';
-import {getMeasureValue, getObjectPropertiesLength, getSizeRangeForGroups} from './utils';
+import {getMeasureValue, getObjectPropertiesLength, getSizeRangeForGroups, getUnitType} from './utils';
 import {hasRoleInValueColumn} from 'powerbi-visuals-utils-dataviewutils/lib/dataRoleHelper';
 import {createTooltipInfo, TooltipSeriesDataItem} from './tooltipBuilder';
 import {translate as svgTranslate} from 'powerbi-visuals-utils-svgutils/lib/manipulation';
 import {min as d3min, max as d3max} from 'd3-array';
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import {scaleLinear, scalePoint} from 'd3-scale';
-
-import '../style/visual.less';
 import {IAxisProperties} from 'powerbi-visuals-utils-chartutils/lib/axis/axisInterfaces';
 import DataViewPropertyValue = powerbi.DataViewPropertyValue;
+import {setDatapointVisibleAngleRange} from './labelLayoutUtils';
+import {selectAll as d3selectAll} from 'd3-selection';
+
+import '../style/visual.less';
 
 class Selectors {
     static readonly MainSvg = createClassAndSelector('lasso-scatter-chart-svg');
@@ -593,38 +595,37 @@ export class Visual implements IVisual {
 
             const axes = this.createD3Axes(visualSize, dataPoints, metadata.cols, axesOptions);
 
-//             this.yAxisIsCategorical = axes.y.isCategoryAxis;
-//
-//             this.addUnitTypeToAxisLabel(axes.x, axes.y);
-//             dataPoints = labelLayoutUtils.setDatapointVisibleAngleRange(dataPoints, axes, visualSize, sizeScale, this.shapesSize);
-//
-//             if (this.interactivityService) {
-//                 this.interactivityService.applySelectionStateToData(dataPoints);
-//             }
-//
-//             // Change rectangular selection color
-//             d3.selectAll(Selectors.SelectionRectangle.selectorName).style({
-//                 "background-color": <string>this.selectionColorSettings.fillColor
-//             });
-//
-//             // Render visual
-//             const data: VisualData = {
-//                 axes,
-//                 sizeRange,
-//                 dataPoints: dataPoints,
-//                 size: visualSize,
-//                 defaultColor: this.settings.dataPoint.defaultColor,
-//                 sizeScale,
-//                 legendData: legendData,
-//                 defaultDataPointColor,
-//                 showAllDataPoints,
-//                 hasDynamicSeries,
-//                 xCol: metadata.cols.x,
-//                 yCol: metadata.cols.y,
-//                 dataLabelsSettings
-//             };
-//
-            // this.data = data;
+            this.yAxisIsCategorical = axes.y.isCategoryAxis;
+
+            this.addUnitTypeToAxisLabel(axes.x, axes.y);
+            dataPoints = setDatapointVisibleAngleRange(dataPoints, axes, visualSize, sizeScale, <any>this.shapesSize);
+
+            if (this.interactivityService) {
+                this.interactivityService.applySelectionStateToData(dataPoints);
+            }
+
+            // Change rectangular selection color
+            d3selectAll(Selectors.SelectionRectangle.selectorName)
+                .style('background-color', <string>this.selectionColorSettings.fillColor);
+
+            // Render visual
+            const data: VisualData = {
+                axes,
+                sizeRange,
+                dataPoints: dataPoints,
+                size: visualSize,
+                defaultColor: this.settings.dataPoint.defaultColor,
+                sizeScale,
+                legendData: legendData,
+                defaultDataPointColor,
+                showAllDataPoints,
+                hasDynamicSeries,
+                xCol: metadata.cols.x,
+                yCol: metadata.cols.y,
+                dataLabelsSettings,
+            };
+
+            this.data = data;
 //             this.renderAxes(data);
 //
 //             let ytickText = this.yAxisSvgGroup.selectAll("text")[0];
@@ -1147,43 +1148,41 @@ export class Visual implements IVisual {
 //
 //             return 1 - <number>pointsTransparencyProperties.regular / 100;
 //         }
-//
-//         private addUnitTypeToAxisLabel(xAxis: IAxisProperties, yAxis: IAxisProperties): void {
-//             let unitType: string = visualUtils.getUnitType(xAxis);
-//
-//             if (xAxis.axisLabel && unitType) {
-//                 if (xAxis.isCategoryAxis) {
-//                     xAxis.axisLabel = axis.createAxisLabel(
-//                         this.categoryAxisProperties,
-//                         xAxis.axisLabel,
-//                         unitType);
-//                 }
-//                 else {
-//                     xAxis.axisLabel = axis.createAxisLabel(
-//                         this.valueAxisProperties,
-//                         xAxis.axisLabel,
-//                         unitType);
-//                 }
-//             }
-//
-//             unitType = visualUtils.getUnitType(yAxis);
-//
-//             if (yAxis.axisLabel && unitType) {
-//                 if (!yAxis.isCategoryAxis) {
-//                     yAxis.axisLabel = axis.createAxisLabel(
-//                         this.valueAxisProperties,
-//                         yAxis.axisLabel,
-//                         unitType);
-//                 }
-//                 else {
-//                     yAxis.axisLabel = axis.createAxisLabel(
-//                         this.categoryAxisProperties,
-//                         yAxis.axisLabel,
-//                         unitType);
-//                 }
-//             }
-//         }
-//
+
+    private addUnitTypeToAxisLabel(xAxis: IAxisProperties, yAxis: IAxisProperties): void {
+        let unitType = getUnitType(xAxis);
+
+        if (xAxis.axisLabel && unitType) {
+            if (xAxis.isCategoryAxis) {
+                xAxis.axisLabel = axis.createAxisLabel(
+                    <any>this.categoryAxisProperties,
+                    xAxis.axisLabel,
+                    unitType);
+            } else {
+                xAxis.axisLabel = axis.createAxisLabel(
+                    <any>this.valueAxisProperties,
+                    xAxis.axisLabel,
+                    unitType);
+            }
+        }
+
+        unitType = getUnitType(yAxis);
+
+        if (yAxis.axisLabel && unitType) {
+            if (!yAxis.isCategoryAxis) {
+                yAxis.axisLabel = axis.createAxisLabel(
+                    <any>this.valueAxisProperties,
+                    yAxis.axisLabel,
+                    unitType);
+            } else {
+                yAxis.axisLabel = axis.createAxisLabel(
+                    <any>this.categoryAxisProperties,
+                    yAxis.axisLabel,
+                    unitType);
+            }
+        }
+    }
+
 //         private renderAxes(data: VisualData) {
 //             // Before rendering an axis, we need to remove an old one.
 //             // Otherwise, our visual will be cluttered by multiple axis objects, which can
@@ -1449,26 +1448,26 @@ export class Visual implements IVisual {
     // eslint-disable-next-line max-lines-per-function
     private createD3Axes(visualSize: ISize, items: VisualDataPoint[], metaDataColumn: VisualMeasureMetadataColumns, options: AxesOptions): IAxes {
         // Create ordinal scale for X axis.
-        let dataDomainMinX: DataViewPropertyValue = d3min(items, d => <number>d.x) ?? Visual.DefaultDataDomainMin;
-        let dataDomainMaxX: DataViewPropertyValue = d3max(items, d => <number>d.x) ?? Visual.DefaultDataDomainMin;
-        const xAxisProperties: IAxisProperties | null = null;
+        let dataDomainMinX: number = d3min(items, d => <number>d.x) ?? Visual.DefaultDataDomainMin;
+        let dataDomainMaxX: number = d3max(items, d => <number>d.x) ?? Visual.DefaultDataDomainMin;
+        let xAxisProperties: IAxisProperties | null = null;
         const categoryAxisProperties = options.categoryAxisProperties;
         const valueAxisProperties = options.valueAxisProperties;
-        const xLine = options.xAxisConstantLine.value;
+        const xLine = <number>options.xAxisConstantLine.value;
         const isShowXLine = options.xAxisConstantLine.show;
         const yLine = options.yAxisConstantLine.value;
         const isShowYLine = options.yAxisConstantLine.show;
-        let forcedYDomain;
+
 
         dataDomainMinX = isShowXLine && xLine < dataDomainMinX ? xLine : dataDomainMinX;
         dataDomainMaxX = isShowXLine && xLine > dataDomainMaxX ? xLine : dataDomainMaxX;
 
-        const forcedXDomain: [DataViewPropertyValue | null, DataViewPropertyValue | null] = [
+        const forcedXDomain: [number | null, number | null] = [
             categoryAxisProperties
-                ? categoryAxisProperties['start']
+                ? <number>categoryAxisProperties['start']
                 : null,
             categoryAxisProperties
-                ? categoryAxisProperties['end']
+                ? <number>categoryAxisProperties['end']
                 : null,
         ];
 
@@ -1476,128 +1475,118 @@ export class Visual implements IVisual {
             ? <number>categoryAxisProperties['labelDisplayUnits']
             : Visual.LabelDisplayUnitsDefault;
 
-        console.log(forcedXDomain);
-        console.log(categoryAxisDisplayUnits);
+        const categoryAxisScaleType = categoryAxisProperties && categoryAxisProperties['axisScale'] != null
+            ? <string>categoryAxisProperties['axisScale']
+            : undefined;
 
-        // const categoryAxisScaleType = categoryAxisProperties && categoryAxisProperties['axisScale'] != null
-        //     ? <string>categoryAxisProperties['axisScale']
-        //     : null;
-        //
-        // let xAxisPrecision: any = categoryAxisProperties && categoryAxisProperties['valueDecimalPlaces'] != null && categoryAxisProperties['valueDecimalPlaces'] >= 0
-        //     ? <string>categoryAxisProperties['valueDecimalPlaces']
-        //     : Visual.DefaultPrecision;
-        //
-        // dataDomainMinX = forcedXDomain[0] !== null && forcedXDomain[0] !== undefined ? forcedXDomain[0] : dataDomainMinX;
-        // dataDomainMaxX = forcedXDomain[1] !== null && forcedXDomain[1] !== undefined ? forcedXDomain[1] : dataDomainMaxX;
-        //
-        // const xAxisFormatString: string = valueFormatter.getFormatStringByColumn(metaDataColumn.x);
-        //
-        // if (dataDomainMinX === 0 && dataDomainMaxX === 0) {
-        //     dataDomainMinX = -1;
-        //     dataDomainMaxX = 1;
-        // }
-        //
-        //
-        // if (xAxisPrecision === 0) {
-        //     xAxisPrecision = xAxisPrecision.toString();
-        // }
-        //
-        // xAxisProperties = createAxis({
-        //     pixelSpan: visualSize.width,
-        //     dataDomain: [dataDomainMinX, dataDomainMaxX],
-        //     metaDataColumn: metaDataColumn.x,
-        //     formatString: xAxisFormatString,
-        //     outerPadding: 0,
-        //     innerPadding: 0,
-        //     isScalar: true,
-        //     isVertical: false,
-        //     isCategoryAxis: true,
-        //     useTickIntervalForDisplayUnits: true,
-        //     scaleType: categoryAxisScaleType,
-        //     axisDisplayUnits: categoryAxisDisplayUnits,
-        //     axisPrecision: xAxisPrecision,
-        // });
-        //
-        // // Hide all ticks for X axis.
-        // xAxisProperties.axis
-        //     .innerTickSize(-visualSize.height)
-        //     .tickPadding(Visual.DefaultAxisXTickPadding)
-        //     .outerTickSize(1);
-        //
-        // // Create linear scale for Y axis
-        //
-        // let dataDomainMinY = d3.min(items, d => <number>d.y);
-        // let dataDomainMaxY = d3.max(items, d => <number>d.y);
-        // let yAxisProperties: axis.IAxisProperties = null;
-        //
-        // dataDomainMinY = dataDomainMinY !== null ? dataDomainMinY : Visual.DefaultDataDomainMin;
-        // dataDomainMaxY = dataDomainMaxY !== null ? dataDomainMaxY : Visual.DefaultDataDomainMin;
-        //
-        // dataDomainMinY = isShowYLine && yLine < dataDomainMinY ? yLine : dataDomainMinY;
-        // dataDomainMaxY = isShowYLine && yLine > dataDomainMaxY ? yLine : dataDomainMaxY;
-        //
-        // const yAxisFormatString: string = valueFormatter.getFormatStringByColumn(metaDataColumn.y);
-        //
-        // const valueAxisDisplayUnits = valueAxisProperties && valueAxisProperties['labelDisplayUnits'] != null
-        //     ? <number>valueAxisProperties['labelDisplayUnits']
-        //     : Visual.LabelDisplayUnitsDefault;
-        //
-        // const valueAxisScaleType = valueAxisProperties && valueAxisProperties['axisScale'] != null
-        //     ? <string>valueAxisProperties['axisScale']
-        //     : null;
-        //
-        // let yAxisPrecision: any = valueAxisProperties && valueAxisProperties['valueDecimalPlaces'] != null && valueAxisProperties['valueDecimalPlaces'] >= 0
-        //     ? <string>valueAxisProperties['valueDecimalPlaces']
-        //     : Visual.DefaultPrecision;
-        //
-        // forcedYDomain = [
-        //     valueAxisProperties
-        //         ? valueAxisProperties['start']
-        //         : null,
-        //     valueAxisProperties
-        //         ? valueAxisProperties['end']
-        //         : null,
-        // ];
-        //
-        // dataDomainMinY = forcedYDomain[0] !== null && forcedYDomain[0] !== undefined ? forcedYDomain[0] : dataDomainMinY;
-        // dataDomainMaxY = forcedYDomain[1] !== null && forcedYDomain[1] !== undefined ? forcedYDomain[1] : dataDomainMaxY;
-        //
-        // if (dataDomainMinY === 0 && dataDomainMaxY === 0) {
-        //     dataDomainMinY = -1;
-        //     dataDomainMaxY = 1;
-        // }
-        //
-        // if (yAxisPrecision === 0) {
-        //     yAxisPrecision = yAxisPrecision.toString();
-        // }
-        //
-        // yAxisProperties = createAxis({
-        //     pixelSpan: visualSize.height,
-        //     dataDomain: [dataDomainMinY, dataDomainMaxY],
-        //     metaDataColumn: metaDataColumn.y,
-        //     formatString: yAxisFormatString,
-        //     outerPadding: 0,
-        //     innerPadding: 0,
-        //     isScalar: true,
-        //     isVertical: true,
-        //     isCategoryAxis: false,
-        //     useTickIntervalForDisplayUnits: true,
-        //     scaleType: valueAxisScaleType,
-        //     axisDisplayUnits: valueAxisDisplayUnits,
-        //     axisPrecision: yAxisPrecision,
-        // });
-        //
-        //
-        // // For Y axis, make ticks appear full-width.
-        // yAxisProperties.axis
-        //     .innerTickSize(-visualSize.width)
-        //     .tickPadding(Visual.DefaultAxisYTickPadding)
-        //     .outerTickSize(1);
-        //
-        // return {
-        //     x: xAxisProperties,
-        //     y: yAxisProperties,
-        // };
+        let xAxisPrecision: any = categoryAxisProperties && categoryAxisProperties['valueDecimalPlaces'] != null && categoryAxisProperties['valueDecimalPlaces'] >= 0
+            ? <string>categoryAxisProperties['valueDecimalPlaces']
+            : Visual.DefaultPrecision;
+
+        dataDomainMinX = forcedXDomain[0] !== null && forcedXDomain[0] !== undefined ? forcedXDomain[0] : dataDomainMinX;
+        dataDomainMaxX = forcedXDomain[1] !== null && forcedXDomain[1] !== undefined ? forcedXDomain[1] : dataDomainMaxX;
+
+        const xAxisFormatString: string = valueFormatter.getFormatStringByColumn(<any>metaDataColumn.x);
+
+        if (dataDomainMinX === 0 && dataDomainMaxX === 0) {
+            dataDomainMinX = -1;
+            dataDomainMaxX = 1;
+        }
+
+        if (xAxisPrecision === 0) {
+            xAxisPrecision = xAxisPrecision.toString();
+        }
+
+        xAxisProperties = createAxis({
+            pixelSpan: visualSize.width,
+            dataDomain: [dataDomainMinX, dataDomainMaxX],
+            metaDataColumn: <any>metaDataColumn.x,
+            formatString: xAxisFormatString,
+            outerPadding: 0,
+            innerPadding: 0,
+            isScalar: true,
+            isVertical: false,
+            isCategoryAxis: true,
+            useTickIntervalForDisplayUnits: true,
+            scaleType: categoryAxisScaleType,
+            axisDisplayUnits: categoryAxisDisplayUnits,
+            axisPrecision: xAxisPrecision,
+        });
+
+        // Hide all ticks for X axis.
+        xAxisProperties.axis
+            .tickSizeInner(-visualSize.height)
+            .tickPadding(Visual.DefaultAxisXTickPadding)
+            .tickSizeOuter(1);
+
+        // Create linear scale for Y axis
+        let dataDomainMinY: number = d3min(items, d => <number>d.y) ?? Visual.DefaultDataDomainMin;
+        let dataDomainMaxY: number = d3max(items, d => <number>d.y) ?? Visual.DefaultDataDomainMin;
+
+        dataDomainMinY = isShowYLine && dataDomainMinY != undefined && yLine < dataDomainMinY ? <number>yLine : dataDomainMinY;
+        dataDomainMaxY = isShowYLine && dataDomainMaxY != undefined && yLine > dataDomainMaxY ? <number>yLine : dataDomainMaxY;
+
+        const yAxisFormatString: string = valueFormatter.getFormatStringByColumn(<any>metaDataColumn.y);
+
+        const valueAxisDisplayUnits = valueAxisProperties && valueAxisProperties['labelDisplayUnits'] != null
+            ? <number>valueAxisProperties['labelDisplayUnits']
+            : Visual.LabelDisplayUnitsDefault;
+
+        const valueAxisScaleType = valueAxisProperties && valueAxisProperties['axisScale'] != null
+            ? <string>valueAxisProperties['axisScale']
+            : undefined;
+
+        let yAxisPrecision = valueAxisProperties && valueAxisProperties['valueDecimalPlaces'] != null && valueAxisProperties['valueDecimalPlaces'] >= 0
+            ? <number>valueAxisProperties['valueDecimalPlaces']
+            : Visual.DefaultPrecision;
+
+        const forcedYDomain: [number | null, number | null] = [
+            valueAxisProperties
+                ? <number>valueAxisProperties['start']
+                : null,
+            valueAxisProperties
+                ? <number>valueAxisProperties['end']
+                : null,
+        ];
+
+        dataDomainMinY = forcedYDomain[0] !== null && forcedYDomain[0] !== undefined ? forcedYDomain[0] : dataDomainMinY;
+        dataDomainMaxY = forcedYDomain[1] !== null && forcedYDomain[1] !== undefined ? forcedYDomain[1] : dataDomainMaxY;
+
+        if (dataDomainMinY === 0 && dataDomainMaxY === 0) {
+            dataDomainMinY = -1;
+            dataDomainMaxY = 1;
+        }
+
+        if (yAxisPrecision === 0) {
+            yAxisPrecision = <any>yAxisPrecision.toString();
+        }
+
+        const yAxisProperties = createAxis({
+            pixelSpan: visualSize.height,
+            dataDomain: [dataDomainMinY, dataDomainMaxY],
+            metaDataColumn: <any>metaDataColumn.y,
+            formatString: yAxisFormatString,
+            outerPadding: 0,
+            innerPadding: 0,
+            isScalar: true,
+            isVertical: true,
+            isCategoryAxis: false,
+            useTickIntervalForDisplayUnits: true,
+            scaleType: valueAxisScaleType,
+            axisDisplayUnits: valueAxisDisplayUnits,
+            axisPrecision: yAxisPrecision,
+        });
+
+        // For Y axis, make ticks appear full-width.
+        yAxisProperties.axis
+            .tickSizeInner(-visualSize.width)
+            .tickPadding(Visual.DefaultAxisYTickPadding)
+            .tickSizeOuter(1);
+
+        return {
+            x: xAxisProperties,
+            y: yAxisProperties,
+        };
     }
 
     // eslint-disable-next-line max-lines-per-function

@@ -12,6 +12,7 @@ import DataViewValueColumnGroup = powerbi.DataViewValueColumnGroup;
 import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
 import DataViewObject = powerbi.DataViewObject;
 import DataViewObjects = powerbi.DataViewObjects;
+import NumberRange = powerbi.NumberRange;
 
 export interface IMargin {
     top: number;
@@ -24,22 +25,22 @@ export interface VisualData {
     dataPoints: VisualDataPoint[];
     size: ISize;
     axes: IAxes;
-//     defaultColor: string;
-//     sizeScale: any;
+    defaultColor: string;
+    sizeScale: any;
     legendData: LegendData;
     defaultDataPointColor?: string;
-//     xCol: DataViewMetadataColumn;
-//     yCol: DataViewMetadataColumn;
+    xCol: DataViewMetadataColumn | undefined; // no undefined
+    yCol: DataViewMetadataColumn | undefined; // no undefined
     showAllDataPoints?: boolean;
     hasDynamicSeries?: boolean;
     dataLabelsSettings: VisualDataLabelsSettings;
-//     sizeRange: NumberRange;
-//     axesDimensions?: {
-//         x: number;
-//         y: number;
-//         width: number;
-//         height: number;
-//     };
+    sizeRange: NumberRange;
+    axesDimensions?: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    };
 }
 
 export interface IAxesSize {
