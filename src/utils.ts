@@ -10,7 +10,6 @@ import {LabelMargin} from './labelLayoutUtils';
 import PrimitiveValue = powerbi.PrimitiveValue;
 import {ISize} from 'powerbi-visuals-utils-svgutils/lib/shapes/shapesInterfaces';
 import {scaleLinear, ScaleLinear} from 'd3-scale';
-import {LineStyle} from 'powerbi-visuals-utils-chartutils/lib/legend/legendInterfaces';
 
 const minRatioBubbleSize = 120;
 const DisplayUnitValue: number = 1;
@@ -22,7 +21,7 @@ const rangeMax = 4;
 export function getBubbleRadius(
     bubbleSize: PrimitiveValue | null,
     viewportSize: ISize,
-    sizeScale: ScaleLinear<number, number, never>,
+    sizeScale: ScaleLinear<number, number>,
     shapesSize: number = 0) {
     const minSize = Math.min(viewportSize.width, viewportSize.height);
 
@@ -84,7 +83,7 @@ export function getVisibleAngleRange(
     yVal: number | null,
     viewport: ISize,
     radius: PrimitiveValue | null,
-    sizeScale: ScaleLinear<number, number, never>,
+    sizeScale: ScaleLinear<number, number>,
     shapesSize: number): [number, number] {
     const width = viewport.width;
     const height = viewport.height;
@@ -165,25 +164,31 @@ export function getUnitType(axisProperties: IAxisProperties): string | null {
     return null;
 }
 
-// export function getTitleWithUnitType(title, axisStyle, axis: IAxisProperties): string {
-//     let unitTitle = visualUtils.getUnitType(axis) || "No unit";
-//     switch (axisStyle) {
-//         case "showUnitOnly": {
-//             return unitTitle;
-//         }
-//         case "showTitleOnly": {
-//             return title;
-//         }
-//         case "showBoth": {
-//             return `${title} (${unitTitle})`;
-//         }
-//     }
-// }
+export function getTitleWithUnitType(
+    title: string,
+    axisStyle: string,
+    axis: IAxisProperties): string {
+    const unitTitle = getUnitType(axis) || 'No unit';
+    switch (axisStyle) {
+        case 'showUnitOnly': {
+            return unitTitle;
+        }
+        case 'showTitleOnly': {
+            return title;
+        }
+        case 'showBoth': {
+            return `${title} (${unitTitle})`;
+        }
+    }
+
+    return title;
+}
 
 export function getObjectPropertiesLength(obj: object | null | undefined): number {
     let counter: number = 0;
 
     if (obj) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         for (const key in obj) {
             counter++;
         }

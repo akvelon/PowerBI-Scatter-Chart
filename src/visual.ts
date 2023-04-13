@@ -15,7 +15,7 @@ import {
     IAxes,
     IAxesSize,
     ICategoryData,
-    IMargin,
+    IMargin, VisualAxesLabels,
     VisualData,
     VisualDataLabelsSettings,
     VisualDataPoint,
@@ -67,7 +67,7 @@ import {
     getLineStyleParam,
     getMeasureValue,
     getObjectPropertiesLength,
-    getSizeRangeForGroups,
+    getSizeRangeForGroups, getTitleWithUnitType,
     getUnitType,
 } from './utils';
 import {hasRoleInValueColumn} from 'powerbi-visuals-utils-dataviewutils/lib/dataRoleHelper';
@@ -184,9 +184,8 @@ export class Visual implements IVisual {
     private data: VisualData | null = null;
     private dataView: DataView | null = null;
     private settings: VisualSettings | null = null;
-    private axisLabelsGroup: Selection<null, unknown, null, unknown> | null = null; // string
+    private axisLabelsGroup: Selection<BaseType, string | null, SVGElement, unknown> | null = null; // string
     private scatterGroupSelect: Selection<BaseType, VisualDataPoint[], SVGSVGElement, unknown> | null = null;
-    private scatterSelect: Selection<BaseType, VisualDataPoint, BaseType, unknown> | null = null;
     private legendProperties: DataViewObject | null = null;
     private categoryAxisProperties: DataViewObject | null = null;
     private valueAxisProperties: DataViewObject | null = null;
@@ -199,7 +198,7 @@ export class Visual implements IVisual {
     private yAxisIsCategorical: boolean | null = null;
     private fillPoint: boolean | null = null;
 
-
+// private scatterSelect: Selection<BaseType, VisualDataPoint, BaseType, unknown> | null = null;
 //         private labelBackgroundGraphicsContext: d3.selection.Update<any>;
 
 
@@ -717,11 +716,11 @@ export class Visual implements IVisual {
 
             this.renderAxes(this.data);
             this.renderVisual(this.data);
-            // this.renderAxesLabels(
-            //     metadata.axesLabels,
-            //     this.legend.getMargins().height + xTickOffset,
-            //     options.viewport,
-            //     visualMargin);
+            this.renderAxesLabels(
+                metadata.axesLabels,
+                this.legend.getMargins().height + xTickOffset,
+                options.viewport,
+                visualMargin);
             // this.renderAxesConstantLines(this.data);
 
 //             // Play Axis
@@ -1102,7 +1101,6 @@ export class Visual implements IVisual {
             data.dataLabelsSettings,
             data,
             this.labelGraphicsContext,
-            // this.labelBackgroundGraphicsContext,
             <number>this.shapesSize?.size);
 
 //             tooltipBuilder.bindTooltip(this.tooltipServiceWrapper, scatterSelect);
@@ -1296,158 +1294,101 @@ export class Visual implements IVisual {
         }
     }
 
-//         private renderAxesLabels(
-//             axisLabels: VisualAxesLabels,
-//             legendMargin: number,
-//             viewport: IViewport,
-//             visualMargin: IMargin): void {
-//
-//             const margin: IMargin = visualMargin,
-//                 width: number = viewport.width,
-//                 height: number = viewport.height,
-//                 yAxisOrientation: string = "left",
-//                 showY1OnRight: boolean = yAxisOrientation === yAxisPosition.right;
-//
-//             const axisLabelsData: Array<string> = [axisLabels.x, axisLabels.y];
-//
-//             this.axisLabelsGroup = this.axisGraphicsContext.selectAll("*")
-//                 .data(axisLabelsData);
-//
-//             // When a new category added, create a new SVG group for it.
-//             this.axisLabelsGroup.enter()
-//                 .append("text")
-//                 .attr("class", Selectors.XAxisLabelSelector.className);
-//
-//             // For removed categories, remove the SVG group.
-//             this.axisLabelsGroup.exit()
-//                 .remove();
-//
-//             // Update the position of existing SVG groups.
-//             this.axisLabelsGroup.attr("transform", d => `translate(${0}, 0)`);
-//
-//             let xColor: DataViewPropertyValue = this.categoryAxisProperties.axisTitleColor;
-//             let xFontSize: number = parseInt(this.categoryAxisProperties.titleFontSize as string);
-//             let xFontSizeString: string = PixelConverter.toString(xFontSize);
-//             let xTitle: DataViewPropertyValue = this.categoryAxisProperties.axisTitle;
-//             let xAxisStyle: DataViewPropertyValue = this.categoryAxisProperties.axisStyle;
-//
-//             let yColor: DataViewPropertyValue = this.valueAxisProperties.axisTitleColor;
-//             let yFontSize: number = this.valueAxisProperties.titleFontSize as number;
-//             let yFontSizeString: string = PixelConverter.toString(yFontSize);
-//             let yTitle: DataViewPropertyValue = this.valueAxisProperties.axisTitle;
-//             let yAxisStyle: DataViewPropertyValue = this.valueAxisProperties.axisStyle;
-//
-//
-//             this.axisLabelsGroup
-//                 .style({ "text-anchor": "middle" })
-//                 .text(d => d)
-//                 .call((text: d3.Selection<any>) => {
-//                     const textSelectionX: d3.Selection<any> = d3.select(text[0][0]);
-//
-//                     textSelectionX.attr({
-//                         "transform": svg.translate(
-//                             (width + margin.left) / Visual.AxisLabelOffset,
-//                             height - this.legend.getMargins().height - this.playAxis.getHeight() - xFontSize
-//                         )
-//                     });
-//
-//                     if (xTitle && xTitle.toString().length > 0) {
-//                         textSelectionX.text(xTitle as string);
-//                     }
-//
-//                     if (xAxisStyle) {
-//                         let newTitle: string = visualUtils.getTitleWithUnitType(textSelectionX.text(), xAxisStyle, this.data.axes.x);
-//
-//                         textSelectionX.text(newTitle);
-//                     }
-//
-//                     if (xColor) {
-//                         textSelectionX.style({ "fill": xColor as string });
-//                     }
-//
-//                     if (xFontSizeString) {
-//                         textSelectionX.style({ "font-size": xFontSizeString });
-//                     }
-//
-//                     const textSelectionY: d3.Selection<any> = d3.select(text[0][1]);
-//
-//                     textSelectionY.attr({
-//                         "transform": Visual.YAxisLabelTransformRotate,
-//                         "y": showY1OnRight
-//                             ? width + margin.right - yFontSize
-//                             : margin.left / 2,
-//                         "x": -((height - margin.top - legendMargin - margin.bottom) / Visual.AxisLabelOffset),
-//                         "dy": Visual.DefaultDY
-//                     });
-//
-//                     if (yTitle && yTitle.toString().length > 0) {
-//                         textSelectionY.text(yTitle as string);
-//                     }
-//
-//                     if (yAxisStyle) {
-//                         let newTitle: string = visualUtils.getTitleWithUnitType(textSelectionY.text(), yAxisStyle, this.data.axes.y);
-//
-//                         textSelectionY.text(newTitle);
-//                     }
-//
-//                     if (yColor) {
-//                         textSelectionY.style({ "fill": yColor as string });
-//                     }
-//
-//                     if (yFontSizeString) {
-//                         textSelectionY.style({ "font-size": yFontSizeString });
-//                     }
-//                 });
-//         }
-//
-//         private renderAxesConstantLines(data: VisualData) {
-//             let axesLinesData = [this.xAxisConstantLineProperties, this.yAxisConstantLineProperties];
-//             let size = data.size;
-//             let xScale = data.axes.x.scale;
-//             let yScale = data.axes.y.scale;
-//             let axesLinesGroup = this.axisConstantLinesGroup.selectAll("*")
-//                 .data(axesLinesData);
-//
-//             axesLinesGroup.enter()
-//                 .append("line")
-//                 .attr("class", Selectors.constantLine.className);
-//
-//             // For removed categories, remove the SVG group.
-//             axesLinesGroup.exit()
-//                 .remove();
-//
-//             axesLinesGroup
-//                 // .attr("cx", d => { return d; })
-//                 .call((lines: d3.Selection<any>) => {
-//                     const xConstantLine: d3.Selection<any> = d3.select(lines[0][0]);
-//
-//                     if (axesLinesData[0].show) {
-//                         xConstantLine
-//                             .attr("x1", xScale(axesLinesData[0].value))
-//                             .attr("x2", xScale(axesLinesData[0].value))
-//                             .attr("y1", "0")
-//                             .attr("y2", size.height)
-//                             .attr("stroke", <string>axesLinesData[0].color)
-//                             .style({ opacity: 1 });
-//                     } else {
-//                         xConstantLine.style({ opacity: 0 });
-//                     }
-//
-//                     const yConstantLine: d3.Selection<any> = d3.select(lines[0][1]);
-//
-//                     if (axesLinesData[1].show) {
-//                         yConstantLine
-//                             .attr("y1", yScale(axesLinesData[1].value))
-//                             .attr("y2", yScale(axesLinesData[1].value))
-//                             .attr("x1", "0")
-//                             .attr("x2", size.width)
-//                             .attr("stroke", <string>axesLinesData[1].color)
-//                             .style({ opacity: 1 });
-//                     } else {
-//                         yConstantLine.style({ opacity: 0 });
-//                     }
-//                 });
-//         }
+    // eslint-disable-next-line max-lines-per-function
+    private renderAxesLabels(
+        axisLabels: VisualAxesLabels,
+        legendMargin: number,
+        viewport: IViewport,
+        visualMargin: IMargin): void {
+
+        const margin = visualMargin;
+        const width = viewport.width;
+        const height = viewport.height;
+        const showY1OnRight = false;
+
+        const axisLabelsData = [axisLabels.x, axisLabels.y];
+
+        // Create text elements for the axis labels.
+        this.axisLabelsGroup = this.axisGraphicsContext.selectAll('*')
+            .data(axisLabelsData);
+
+        const axisLabelsGroupEnter = this.axisLabelsGroup.enter()
+            .append('text')
+            .classed(Selectors.XAxisLabelSelector.className, true);
+
+        this.axisLabelsGroup.exit().remove();
+
+        // Read the properties of the axes.
+        const xColor = <string>this.categoryAxisProperties?.axisTitleColor;
+        const xFontSize: number = parseInt(<string>this.categoryAxisProperties?.titleFontSize);
+        const xFontSizeString = PixelConverter.toString(xFontSize);
+        const xTitle = this.categoryAxisProperties?.axisTitle.toString();
+        const xAxisStyle = <string>this.categoryAxisProperties?.axisStyle;
+
+        const yColor = <string>this.valueAxisProperties?.axisTitleColor;
+        const yFontSize = <number>this.valueAxisProperties?.titleFontSize;
+        const yFontSizeString = PixelConverter.toString(yFontSize);
+        const yTitle = this.valueAxisProperties?.axisTitle;
+        const yAxisStyle = <string>this.valueAxisProperties?.axisStyle;
+
+        // Set the properties of the axes.
+        this.axisLabelsGroup.merge(axisLabelsGroupEnter)
+            .style('text-anchor', 'middle')
+            .text(d => d)
+            .call(t => {
+                // X Axis
+                const textSelectionX = d3select(t.nodes()[0]);
+                textSelectionX.attr('transform', svgTranslate(
+                    (width + margin.left) / Visual.AxisLabelOffset,
+                    height - this.legend.getMargins().height - this.playAxis.getHeight() - xFontSize,
+                ));
+
+                if (xTitle && xTitle.toString().length > 0) {
+                    textSelectionX.text(xTitle as string);
+                }
+
+                if (xAxisStyle && this.data?.axes.x) {
+                    const newTitle: string = getTitleWithUnitType(textSelectionX.text(), xAxisStyle, this.data.axes.x);
+                    textSelectionX.text(newTitle);
+                }
+
+                if (xColor) {
+                    textSelectionX.style('fill', xColor);
+                }
+
+                if (xFontSizeString) {
+                    textSelectionX.style('font-size', xFontSizeString);
+                }
+
+                // Y Axis
+                const textSelectionY = d3select(t.nodes()[1]);
+                textSelectionY
+                    .attr('transform', Visual.YAxisLabelTransformRotate)
+                    .attr('x', -((height - margin.top - legendMargin - margin.bottom) / Visual.AxisLabelOffset))
+                    .attr('y', showY1OnRight
+                        ? width + margin.right - yFontSize
+                        : margin.left / 2)
+                    .attr('dy', Visual.DefaultDY);
+
+                if (yTitle && yTitle.toString().length > 0) {
+                    textSelectionY.text(yTitle as string);
+                }
+
+                if (yAxisStyle && this.data?.axes.y) {
+                    const newTitle: string = getTitleWithUnitType(textSelectionY.text(), yAxisStyle, this.data?.axes.y);
+
+                    textSelectionY.text(newTitle);
+                }
+
+                if (yColor) {
+                    textSelectionY.style('fill', yColor);
+                }
+
+                if (yFontSizeString) {
+                    textSelectionY.style('font-size', yFontSizeString);
+                }
+            });
+    }
 
     // eslint-disable-next-line max-lines-per-function
     private createD3Axes(

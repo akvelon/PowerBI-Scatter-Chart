@@ -34,7 +34,7 @@ class Selectors {
 export function getVisualLabelLayout(
     labelSettings: VisualDataLabelsSettings,
     viewport: IViewport,
-    sizeScale: ScaleLinear<number, number, never>,
+    sizeScale: ScaleLinear<number, number>,
     axes: IAxes,
     shapesSize: number): ILabelLayout {
 
@@ -55,9 +55,7 @@ export function getVisualLabelLayout(
         labelLayout: {
             x: (dataPoint: VisualDataPoint) => {
                 const radius = getBubbleRadius(dataPoint.radius.value, viewport, sizeScale, shapesSize);
-                const margin = radius + LabelMargin;
                 const x = dataPoint.x !== null ? xScale(dataPoint.x) : viewport.width / 2;
-                const y = dataPoint.y !== null ? yScale(dataPoint.y) : viewport.height / 2;
                 const angle = dataPoint.labelAnglePosition
                     ? dataPoint.labelAnglePosition * Math.PI / 180
                     : 0;
@@ -67,16 +65,12 @@ export function getVisualLabelLayout(
             },
             y: (dataPoint: VisualDataPoint) => {
                 const radius = getBubbleRadius(dataPoint.radius.value, viewport, sizeScale, shapesSize);
-                const margin = radius + LabelMargin;
-                const fontSize: number = parseInt(dataPoint.labelFontSize);
                 const y = dataPoint.y !== null ? yScale(dataPoint.y) : viewport.height / 2;
                 const angle = dataPoint.labelAnglePosition
                     ? dataPoint.labelAnglePosition * Math.PI / 180
                     : 0;
                 const newY = y - (radius + LabelMargin) * Math.sin(angle);
-                const yVal = getDefinedNumberValue(Math.round(newY));
-
-                return yVal;
+                return getDefinedNumberValue(Math.round(newY));
             },
         },
         filter: (dataPoint: VisualDataPoint) => {
@@ -349,7 +343,7 @@ export function showLabelBackground(
             labelTextDimensions.push({width, height});
         });
 
-    // Inside of the group, create a rect for each label.
+    // Inside the group, create a rect for each label.
     const backgrounds = groups.merge(groupEnter)
         .selectAll(Selectors.LabelBackground.selectorName)
         .data(d => {
@@ -390,7 +384,7 @@ export function setDatapointVisibleAngleRange(
     dataPoints: VisualDataPoint[],
     axes: IAxes,
     size: ISize,
-    sizeScale: ScaleLinear<number, number, never>,
+    sizeScale: ScaleLinear<number, number>,
     shapesSize: number): VisualDataPoint[] {
 
     return dataPoints.map(dataPoint => {
