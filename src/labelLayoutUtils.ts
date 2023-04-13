@@ -2,12 +2,9 @@ import {ISize} from 'powerbi-visuals-utils-svgutils/lib/shapes/shapesInterfaces'
 import {IAxes, VisualData, VisualDataLabelsSettings, VisualDataPoint, VisualLabelsDelta} from './visualInterfaces';
 import {ScaleLinear} from 'd3-scale';
 import powerbi from 'powerbi-visuals-api';
-import DataViewObject = powerbi.DataViewObject;
 import {getBubbleRadius, getVisibleAngleRange, getVisibleLabelsCountOnAngleRange} from './utils';
 import {Selection as d3Selection} from 'd3-selection';
 import {createClassAndSelector} from 'powerbi-visuals-utils-svgutils/lib/cssConstants';
-import IViewport = powerbi.IViewport;
-import NumberRange = powerbi.NumberRange;
 import {ILabelLayout} from 'powerbi-visuals-utils-chartutils/lib/dataLabel/dataLabelInterfaces';
 import {
     cleanDataLabels,
@@ -16,6 +13,7 @@ import {
 } from 'powerbi-visuals-utils-chartutils/lib/dataLabel/dataLabelUtils';
 import {pixelConverter as PixelConverter} from 'powerbi-visuals-utils-typeutils';
 import {translate as svgTranslate} from 'powerbi-visuals-utils-svgutils/lib/manipulation';
+import IViewport = powerbi.IViewport;
 
 export const DefaultPosition: number = 0;
 export const LabelMargin: number = 5;
@@ -241,7 +239,6 @@ export function bindLabelLayout(
             return 0;
         });
 
-
         const equalDataPointLabels: VisualDataPointWithIndex[][] = [];
         let tempArray: VisualDataPointWithIndex[] = [];
 
@@ -325,82 +322,68 @@ export function bindLabelLayout(
     }
 }
 
+// eslint-disable-next-line max-lines-per-function
 export function showLabelBackground(
     dataPoints: VisualDataPoint[],
     labelGraphicsContext: d3Selection<SVGGElement, unknown, null, undefined>,
     dataLabelsSettings: VisualDataLabelsSettings) {
 
-    // const labelBackgroundGraphicsContext = labelGraphicsContext.selectAll(Selectors.LabelBackgroundGroup.selectorName)
-    //     .data([dataPoints]);
-    //
-    // // When a new category added, create a new SVG group for it.
-    // labelBackgroundGraphicsContext.enter()
-    //     .append("g")
-    //     .attr("class", Selectors.labelBackgroundGroup.className);
-    //
-    //
-    // // For removed categories, remove the SVG group.
-    // labelBackgroundGraphicsContext.exit()
-    //     .remove();
-    //
-    // let labelTextDimensions: Array<ISize> = [];
-    //
-    // labelGraphicsContext.selectAll("text").forEach(elem => {
-    //     elem.forEach(item => {
-    //         let dimension = item.getBoundingClientRect();
-    //         labelTextDimensions.push({
-    //             width: dimension.width,
-    //             height: dimension.height
-    //         });
-    //     });
-    // });
+    // Add a group containing background rects for each label.
+    // first-child is used to make sure that the background rects are behind the labels.
+    const groups = labelGraphicsContext
+        .selectAll(Selectors.LabelBackgroundGroup.selectorName)
+        .data([dataPoints]);
 
-    // Now we bind each SVG group to the values in corresponding category.
-    // To keep the length of the values array, we transform each value into object,
-    // that contains both value and total count of all values in this category.
-    // const labelBackgroundSelect = labelBackgroundGraphicsContext
-    //     .selectAll(Selectors.labelBackground.selectorName)
-    //     .data(d => {
-    //         return d.map((dd, i) => {
-    //             let delta = getLabelDelta(dd.size, dd.labelAnglePosition);
-    //             return {
-    //                 x: dd.labelX,
-    //                 y: dd.labelY,
-    //                 width: labelTextDimensions[i].width,
-    //                 height: labelTextDimensions[i].height,
-    //                 dx: delta.dx,
-    //                 dy: delta.dy,
-    //                 fontSize: pixelConverter.fromPointToPixel(parseInt(dd.labelFontSize)),
-    //                 text: dd.formattedCategory().length
-    //             };
-    //         });
-    //     });
-    //
-    // // For each new value, we create a new rectange.
-    // labelBackgroundSelect.enter().append("rect")
-    //     .attr("class", Selectors.labelBackground.className);
-    //
-    // // Remove rectangles, that no longer have matching values.
-    // labelBackgroundSelect.exit()
-    //     .remove();
-    //
-    // let fontSize = pixelConverter.fromPointToPixel(dataLabelsSettings.fontSize!);
-    //
-    // // Set the size and position of existing rectangles.
-    // labelBackgroundSelect
-    //     .attr("x", d => d.x + d.dx - (d.width + DataLabelBackgroundOffset) / 2)
-    //     .attr("y", d => d.y + d.dy - (d.height + DataLabelBackgroundOffset / 2 + fontSize) / 2)
-    //     .attr("rx", DataLabelBorderRadius)
-    //     .attr("ry", DataLabelBorderRadius)
-    //     .attr("width", d => d.width + DataLabelBackgroundOffset)
-    //     .attr("height", d => d.height + DataLabelBackgroundOffset)
-    //     .attr("transform", (d) => {
-    //         // return svg.translate(-d.width / 2, -d.height / 2);
-    //     })
-    //     .style({
-    //         "fill-opacity": 1 - dataLabelsSettings.transparency! / 100,
-    //         "fill": dataLabelsSettings.backgroundColor
-    //     });
+    const groupEnter = groups.enter()
+        .insert('g', ':first-child')
+        .classed(Selectors.LabelBackgroundGroup.className, true);
+
+    groups.exit().remove();
+
+    // Find all labels in the parent selection.
+    // Measure dimensions of each label and store them in an array to later use to size background rects.
+    const labelTextDimensions: ISize[] = [];
+    labelGraphicsContext.selectAll<SVGTextElement, undefined>('.labels text')
+        .each(function () {
+            const {width, height} = this.getBoundingClientRect();
+            labelTextDimensions.push({width, height});
+        });
+
+    // Inside of the group, create a rect for each label.
+    const backgrounds = groups.merge(groupEnter)
+        .selectAll(Selectors.LabelBackground.selectorName)
+        .data(d => {
+            return d.map((dd, i) => {
+                const delta = dd.size && getLabelDelta(dd.size, dd.labelAnglePosition);
+                return {
+                    x: dd.labelX ?? 0,
+                    y: dd.labelY ?? 0,
+                    width: labelTextDimensions[i].width,
+                    height: labelTextDimensions[i].height,
+                    dx: delta?.dx ?? 0,
+                    dy: delta?.dy ?? 0,
+                    fontSize: PixelConverter.fromPointToPixel(parseInt(dd.labelFontSize)),
+                    textLength: dd.formattedCategory?.().length,
+                };
+            });
+        });
+
+    const backgroundsEnter = backgrounds.enter()
+        .append('rect')
+        .classed(Selectors.LabelBackground.className, true);
+
+    backgrounds.exit().remove();
+
+    const fontSize = PixelConverter.fromPointToPixel(<number>dataLabelsSettings.fontSize);
+    backgrounds.merge(backgroundsEnter)
+        .attr('x', d => d.x + d.dx - (d.width + DataLabelBackgroundOffset) / 2)
+        .attr('y', d => d.y + d.dy - (d.height + DataLabelBackgroundOffset / 2 + fontSize) / 2)
+        .attr('rx', DataLabelBorderRadius)
+        .attr('ry', DataLabelBorderRadius)
+        .attr('width', d => d.width + DataLabelBackgroundOffset)
+        .attr('height', d => d.height + DataLabelBackgroundOffset)
+        .style('fill-opacity', 1 - (dataLabelsSettings.transparency ?? 0) / 100)
+        .style('fill', () => dataLabelsSettings.backgroundColor ?? null);
 }
 
 export function setDatapointVisibleAngleRange(
@@ -409,13 +392,12 @@ export function setDatapointVisibleAngleRange(
     size: ISize,
     sizeScale: ScaleLinear<number, number, never>,
     shapesSize: number): VisualDataPoint[] {
-    const clonedDataPoins = dataPoints.map(dataPoint => {
+
+    return dataPoints.map(dataPoint => {
         const angleRange = getVisibleAngleRange(axes, dataPoint.x, dataPoint.y, size, dataPoint.radius.value, sizeScale, shapesSize);
         return {
             ...dataPoint,
             angleRange,
         };
     });
-
-    return clonedDataPoins;
 }

@@ -717,13 +717,13 @@ export class Visual implements IVisual {
 
             this.renderAxes(this.data);
             this.renderVisual(this.data);
-//             this.renderAxesLabels(
-//                 metadata.axesLabels,
-//                 this.legend.getMargins().height + xTickOffset,
-//                 options.viewport,
-//                 visualMargin);
-//             this.renderAxesConstantLines(this.data);
-//
+            // this.renderAxesLabels(
+            //     metadata.axesLabels,
+            //     this.legend.getMargins().height + xTickOffset,
+            //     options.viewport,
+            //     visualMargin);
+            // this.renderAxesConstantLines(this.data);
+
 //             // Play Axis
 //             if (this.playAxis.isEnabled()) {
 //                 const playAxisUpdateData: PlayAxisUpdateData = {
