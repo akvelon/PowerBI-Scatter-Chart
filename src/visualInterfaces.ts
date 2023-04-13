@@ -13,6 +13,8 @@ import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
 import DataViewObject = powerbi.DataViewObject;
 import DataViewObjects = powerbi.DataViewObjects;
 import NumberRange = powerbi.NumberRange;
+import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
+import {ScaleLinear} from 'd3-scale';
 
 export interface IMargin {
     top: number;
@@ -26,7 +28,7 @@ export interface VisualData {
     size: ISize;
     axes: IAxes;
     defaultColor: string;
-    sizeScale: any;
+    sizeScale: ScaleLinear<number, number, never>;
     legendData: LegendData;
     defaultDataPointColor?: string;
     xCol: DataViewMetadataColumn | undefined; // no undefined
@@ -104,31 +106,31 @@ export interface VisualDataLabelsSettings extends PointDataLabelsSettings {
 export interface VisualDataPoint extends SelectableDataPoint, TooltipEnabledDataPoint {
     x: number | null; // PrimitiveValue;
     y: number | null; // PrimitiveValue;
-    size: number | ISize | null;
+    size: /*number |*/ ISize | null;
     radius: VisualRadiusData;
     fill?: string;
-    // colorFill?: string;
+    colorFill?: string;
     columnGroup: DataViewValueColumnGroup;
     formattedCategory?: () => string;
-    // tooltipInfo: VisualTooltipDataItem[];
+    tooltipInfo: VisualTooltipDataItem[];
     labelFill?: string;
     labelFontSize: any;
     labelFontFamily: string;
-    angleRange?: [number, number];
+    angleRange: [number, number];
     labelAnglePosition?: number;
     equalDataPointLabelsCount?: VisualLabelsCount;
     xStart?: number | null; // no null
     xEnd?: number | null; // no null
     yStart?: number | null; // no null
     yEnd?: number | null; // no null
-    // labelX?: number;
-    // labelY?: number;
-    // index?: number;
-    // entirePath?: VisualDataPoint[];
+    labelX?: number;
+    labelY?: number;
+    index?: number;
+    entirePath?: VisualDataPoint[];
     playAxisValue?: PrimitiveValue;
-    // pathDistances?: number[];
-    // pathElement?: SVGElement;
-    // isShown?: boolean;
+    pathDistances?: number[];
+    pathElement?: SVGElement;
+    isShown?: boolean;
 }
 
 export interface VisualLabelsCount {
@@ -141,11 +143,11 @@ export interface VisualLabelsCount {
 //     regular: number;
 //     unselected: number;
 // }
-//
-// export interface VisualLabelsDelta {
-//     dx: number;
-//     dy: number;
-// }
+
+export interface VisualLabelsDelta {
+    dx: number;
+    dy: number;
+}
 
 export interface VisualAxesLabels {
     x: string | null; // no null

@@ -76,7 +76,7 @@ import {translate as svgTranslate} from 'powerbi-visuals-utils-svgutils/lib/mani
 import {max as d3max, min as d3min} from 'd3-array';
 import {scaleLinear} from 'd3-scale';
 import {IAxisProperties} from 'powerbi-visuals-utils-chartutils/lib/axis/axisInterfaces';
-import {setDatapointVisibleAngleRange} from './labelLayoutUtils';
+import {bindLabelLayout, setDatapointVisibleAngleRange} from './labelLayoutUtils';
 
 import '../style/visual.less';
 import {lassoSelectorInit} from './selectionUtil';
@@ -996,6 +996,8 @@ export class Visual implements IVisual {
                     category ? [category] : undefined,
                     seriesData);
 
+                console.log('sizeVal: ', sizeVal);
+
                 dataPoints.push({
                     x: xVal,
                     y: yVal,
@@ -1083,92 +1085,43 @@ export class Visual implements IVisual {
             .attr('cy', d => this.getBubblePositionY(data.axes.y.scale, d.y))
             .attr('r', d => getBubbleRadius(d.radius.value, data.size, data.sizeScale, <number>this.shapesSize?.size))
             .style('fill-opacity', d => this.fillPoint ? this.getFillOpacity(d) : 0)
-            .style('fill', d => d.fill ?? null);
+            .style('fill', d => d.fill ?? null)
+            .style('stroke-opacity', d => {
+                if (this.fillPoint) {
+                    if (d.selected) {
+                        return 1;
+                    } else {
+                        return 0;
+                    }
+                } else {
+                    return this.getFillOpacity(d);
+                }
+            })
+            .style('stroke', d => {
+                if (this.fillPoint && d.selected) {
+                    return Visual.DefaultStrokeSelectionColor;
+                }
 
-        //     'stroke-opacity': d => {
-        //         if (this.fillPoint) {
-        //             if (d.selected) {
-        //                 return 1;
-        //             } else {
-        //                 return 0;
-        //             }
-        //         } else {
-        //             return this.getFillOpacity(d);
-        //         }
-        //     },
-        //     'stroke': d => {
-        //         if (this.fillPoint) {
-        //             if (d.selected) {
-        //                 return Visual.DefaultStrokeSelectionColor;
-        //             }
-        //         }
-        //         return d.fill;
-        //     },
-        //     'stroke-width': d => {
-        //         if (d.selected) {
-        //             return Visual.DefaultStrokeSelectionWidth;
-        //         }
-        //
-        //         return Visual.DefaultStrokeWidth;
-        //     },
-        // })
-        // .each(function (d, i) {
-        //     d.index = i;
-        // });
+                return d.fill ?? null;
+            })
+            .style('stroke-width', d => {
+                if (d.selected) {
+                    return Visual.DefaultStrokeSelectionWidth;
+                }
 
+                return Visual.DefaultStrokeWidth;
+            })
+            .each(function (d, i) {
+                d.index = i;
+            });
 
-        // this.scatterSelect.exit()
-        //     .remove();
-        //
+        bindLabelLayout(
+            data.dataLabelsSettings,
+            data,
+            this.labelGraphicsContext,
+            // this.labelBackgroundGraphicsContext,
+            <number>this.shapesSize?.size);
 
-        // const scatterSelectEnter = this.scatterSelect.enter()
-        //     // .selectAll(Selectors.ScatterGroup.selectorName)
-        //     .append('circle')
-        //     .classed(Selectors.ScatterDot.className, true);
-        //
-        // console.log('scatterSelectEnter', this.scatterSelect.merge(this.scatterSelect.enter()).nodes());
-
-        // // Set the size and position of existing rectangles.
-        // scatterSelectEnter.merge(this.scatterSelect)
-        //     .attr("cx", d => this.getBubblePositionX(data.axes.x.scale, d.x))
-//                 .attr("cy", d => this.getBubblePositionY(data.axes.y.scale, d.y))
-//                 .attr("r", d => visualUtils.getBubbleRadius(d.radius.value, data.size, data.sizeScale, <number>this.shapesSize.size))
-//                 .style({
-//                     "fill-opacity": d => this.fillPoint ? this.getFillOpacity(d) : 0,
-//                     "fill": d => d.fill,
-//                     "stroke-opacity": d => {
-//                         if (this.fillPoint) {
-//                             if (d.selected) {
-//                                 return 1;
-//                             } else {
-//                                 return 0;
-//                             }
-//                         } else {
-//                             return this.getFillOpacity(d);
-//                         }
-//                     },
-//                     "stroke": d => {
-//                         if (this.fillPoint) {
-//                             if (d.selected) {
-//                                 return Visual.DefaultStrokeSelectionColor;
-//                             }
-//                         }
-//                         return d.fill;
-//                     },
-//                     "stroke-width": d => {
-//                         if (d.selected) {
-//                             return Visual.DefaultStrokeSelectionWidth;
-//                         }
-//
-//                         return Visual.DefaultStrokeWidth;
-//                     }
-//                 })
-//                 .each(function (d, i) {
-//                     d.index = i;
-//                 });
-//
-//             labelLayoutUtils.bindLabelLayout(this.data.dataLabelsSettings, data, this.labelGraphicsContext, this.labelBackgroundGraphicsContext, <number>this.shapesSize.size);
-//
 //             tooltipBuilder.bindTooltip(this.tooltipServiceWrapper, scatterSelect);
 //
 //             this.bindInteractivityService(scatterSelect, dataPoints);

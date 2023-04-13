@@ -123,24 +123,23 @@ export function hasIntersection(
     return (Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2)) <= Math.pow(radius, 2);
 }
 
-// export function getVisibleLabelsCountOnAngleRange(angleRange) {
-//     const maxLabelPositionOn360deg = 8;
-//     const maxLabelPositionOn180deg = 3;
-//     const maxLabelPositionOn90deg = 1;
-//
-//     let angle = Math.abs(angleRange.reduce((pv, cv) => pv - cv));
-//
-//     switch (angle) {
-//         case 90:
-//             return maxLabelPositionOn90deg;
-//         case 180:
-//             return maxLabelPositionOn180deg;
-//         case 360:
-//             return maxLabelPositionOn360deg;
-//         default:
-//             return 0;
-//     }
-// }
+export function getVisibleLabelsCountOnAngleRange(angleRange: [number, number]): number {
+    const maxLabelPositionOn360deg = 8;
+    const maxLabelPositionOn180deg = 3;
+    const maxLabelPositionOn90deg = 1;
+
+    const angle = Math.abs(angleRange.reduce((pv, cv) => pv - cv));
+    switch (angle) {
+        case 90:
+            return maxLabelPositionOn90deg;
+        case 180:
+            return maxLabelPositionOn180deg;
+        case 360:
+            return maxLabelPositionOn360deg;
+        default:
+            return 0;
+    }
+}
 
 export function getLineStyleParam(lineStyle: string): string | null {
     switch (lineStyle) {
