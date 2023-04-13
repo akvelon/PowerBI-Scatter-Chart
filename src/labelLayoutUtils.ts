@@ -216,7 +216,6 @@ export function bindLabelLayout(
     data: VisualData,
     labelGraphicsContext: d3Selection<SVGGElement, unknown, null, undefined>,
     shapesSize: number) {
-    console.log('dataLabelsSettings.show', dataLabelsSettings.show);
     if (dataLabelsSettings.show) {
         const layout = getVisualLabelLayout(dataLabelsSettings, data.size, data.sizeScale, data.axes, shapesSize);
 

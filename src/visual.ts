@@ -358,10 +358,8 @@ export class Visual implements IVisual {
 
             // play axis - it affects the visual only if Play Axis bucket is filled
             if (dataViewCategorical.categories && metadata.idx.playAxis !== undefined && dataViewCategorical.categories[metadata.idx.playAxis]) {
-                console.log('play axis enabled');
                 this.playAxis.enable();
             } else {
-                console.log('play axis disabled');
                 this.playAxis.disable();
             }
 
@@ -996,8 +994,6 @@ export class Visual implements IVisual {
                     category ? [category] : undefined,
                     seriesData);
 
-                console.log('sizeVal: ', sizeVal);
-
                 dataPoints.push({
                     x: xVal,
                     y: yVal,
@@ -1040,47 +1036,34 @@ export class Visual implements IVisual {
 
     // eslint-disable-next-line max-lines-per-function
     private renderVisual(data: VisualData) {
-        const colorHelper = new ColorHelper(this.host.colorPalette);
+        // const colorHelper = new ColorHelper(this.host.colorPalette);
         const dataPoints: VisualDataPoint[] = data.dataPoints.filter(d =>
             !((data.xCol != null && d.x == null) || (data.yCol != null && d.y == null)),
         );
 
-        console.log('dataPoints', dataPoints);
-
-        // Select all bar groups in our chart and bind them to our categories.
-        // Each group will contain a set of bars, one for each of the values in category.
-        this.scatterGroupSelect = this.visualSvgGroupMarkers
+        // Add an svg group containing the dots.
+        const groups = this.visualSvgGroupMarkers
             .selectAll(Selectors.ScatterGroup.selectorName)
             .data([dataPoints]);
 
-        // For removed categories, remove the SVG group.
-        this.scatterGroupSelect.exit()
-            .remove();
-
-        // When a new category added, create a new SVG group for it.
-        this.scatterGroupSelect.enter()
+        const groupsEnter = groups.enter()
             .append('g')
             .classed(Selectors.ScatterGroup.className, true);
 
-        // Now we bind each SVG group to the values in corresponding category.
-        // To keep the length of the values array, we transform each value into object,
-        // that contains both value and total count of all values in this category.
-        this.scatterSelect = this.scatterGroupSelect.merge(this.scatterGroupSelect.enter())
-            .selectAll(Selectors.ScatterGroup.selectorName)
+        groups.exit().remove();
+
+        // Add dots to the group.
+        const groupDots = groups.merge(groupsEnter)
             .selectAll(Selectors.ScatterDot.selectorName)
-            .data((d: VisualDataPoint[]) => d);
+            .data(d => d);
 
-        // Remove rectangles, that no longer have matching values.
-        this.scatterSelect.exit()
-            .remove();
-
-        // For each new value, we create a new circle.
-        this.scatterSelect.enter()
+        const groupDotsEnter = groupDots.enter()
             .append('circle')
             .classed(Selectors.ScatterDot.className, true);
 
-        this.scatterSelect.merge(this.scatterSelect.enter())
-            .selectAll<BaseType, VisualDataPoint>(Selectors.ScatterDot.selectorName)
+        groupDots.exit().remove();
+
+        groupDots.merge(groupDotsEnter)
             .attr('cx', d => this.getBubblePositionX(data.axes.x.scale, d.x))
             .attr('cy', d => this.getBubblePositionY(data.axes.y.scale, d.y))
             .attr('r', d => getBubbleRadius(d.radius.value, data.size, data.sizeScale, <number>this.shapesSize?.size))

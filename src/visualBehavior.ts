@@ -41,8 +41,6 @@ export class VisualBehavior implements IInteractiveBehavior {
 
 //             const multiSelect: boolean = true;
 
-        console.log('options', behaviorOptions);
-
         this.options = behaviorOptions;
         this.selectionHandler = selectionHandler;
 
