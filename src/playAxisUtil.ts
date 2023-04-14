@@ -1,6 +1,7 @@
 import {BaseType, Selection as d3Selection} from 'd3-selection';
 import {ITooltipServiceWrapper} from 'powerbi-visuals-utils-tooltiputils';
 import {VisualDataPoint} from './visualInterfaces';
+import SliderOptions = JQueryUI.SliderOptions;
 
 interface PlayAxisMeasures {
     width: number;
@@ -74,12 +75,12 @@ export class PlayAxis {
 //     private visualSize: ISize;
     private groupedDataPoints: VisualDataPoint[][];
 //     private groupNames: string[];
-//     private currentGroupIndex: number;
+    private currentGroupIndex: number | undefined = undefined;
 //     private valuesType: PlayAxisValueType;
-//
+
     // slider
-    private sliderEl: HTMLElement | undefined = undefined;
-    // private $sliderEl: JQuery;
+    private sliderEl: HTMLDivElement | undefined = undefined;
+    private $sliderEl: JQuery<HTMLDivElement> | undefined = undefined;
 
     // axis
     private axisGroup: d3Selection<null, undefined, null, undefined> | undefined = undefined;
@@ -285,36 +286,47 @@ export class PlayAxis {
 
     private initSlider(mainElement: HTMLElement): void {
         // Changing the jQuery's global setting
-        // $.easing._default = 'linear' as any;
+        $.easing._default = 'linear' as any;
 
-        // this.sliderEl = document.createElement('div');
+        this.sliderEl = document.createElement('div');
         // this.sliderEl.style.display = 'none';
-        // this.$sliderEl = $(this.sliderEl).attr({
-        //     id: 'playAxisSlider',
-        //     class: 'playAxisSlider'
-        // });
-        //
-        // // Creating jQuery UI Slider
-        // // Demo: https://jqueryui.com/slider/
-        // // API: http://api.jqueryui.com/slider/
-        // const jqueryUiSliderParams = {
-        //     min: 0,
-        //     max: 1,
-        //     value: 0,
-        //     animate: Constants.Slider.AnimationDuration,
-        //     slide: (e, ui) => {
-        //         this.currentGroupIndex = ui.value;
-        //         this.onSlide(+ui.value);
-        //     },
-        //     change: (e, ui) => {
-        //         this.currentGroupIndex = ui.value;
-        //         this.onChange(+ui.value);
-        //     }
-        // };
-        // this.$sliderEl
-        //     .css('height', Constants.Slider.Height)
-        //     .appendTo(mainElement)
-        //     .slider(jqueryUiSliderParams);
+
+        this.$sliderEl = $(this.sliderEl);
+
+        // Hide slider element by setting style.display attribute to 'none'
+        this.$sliderEl.css('display', 'none');
+
+        // Set slider element's id and class attributes to playAxisSlider
+        this.$sliderEl.attr({
+            id: 'playAxisSlider',
+            class: 'playAxisSlider',
+        });
+
+        // Creating jQuery UI Slider
+        // Demo: https://jqueryui.com/slider/
+        // API: http://api.jqueryui.com/slider/
+        const jqueryUiSliderParams: SliderOptions = {
+            min: 0,
+            max: 1,
+            value: 0,
+            animate: Constants.SliderAnimationDuration,
+            slide: (e, ui) => {
+                this.currentGroupIndex = ui.value;
+                if (ui.value !== undefined) {
+                    this.onSlide(+ui.value);
+                }
+            },
+            change: (e, ui) => {
+                this.currentGroupIndex = ui.value;
+                if (ui.value != undefined) {
+                    this.onChange(+ui.value);
+                }
+            },
+        };
+        this.$sliderEl
+            .css('height', Constants.SliderHeight)
+            .appendTo(mainElement)
+            .slider(jqueryUiSliderParams);
     }
 
 //     private renderSlider(update: PlayAxisUpdateData, measures: PlayAxisMeasures, maxValue: number): void {
@@ -353,21 +365,21 @@ export class PlayAxis {
 //             });
 //         }
 //     }
-//
-//     private onSlide(index: number): void {
-//         this.stopAutoPlay();
-//         this.slice(index, true);
-//         this.renderPaths(null, true);
-//     }
-//
-//     private onChange(index: number): void {
-//         this.slice(index, true);
-//     }
-//
-//     // End: Slider
-//
-//     // Axis
-//
+
+    private onSlide(index: number): void {
+        // this.stopAutoPlay();
+        // this.slice(index, true);
+        // this.renderPaths(null, true);
+    }
+
+    private onChange(index: number): void {
+        // this.slice(index, true);
+    }
+
+    // End: Slider
+
+    // Axis
+
 //     private createAxisContainer(mainSvgElement: d3.Selection<any>): void {
 //         this.axisGroup = mainSvgElement.append('g').style('display', 'none').attr({
 //             id: 'playAxis',

@@ -1,3 +1,5 @@
+import 'jquery-ui-dist/jquery-ui';
+
 import powerbi from 'powerbi-visuals-api';
 import {createClassAndSelector} from 'powerbi-visuals-utils-svgutils/lib/cssConstants';
 import {BaseType, select as d3select, selectAll as d3selectAll, Selection} from 'd3-selection';
