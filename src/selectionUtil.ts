@@ -1,9 +1,9 @@
-import {Selection as d3Selection, select as d3select, selectAll as d3selectAll} from 'd3-selection';
+import {Selection as d3Selection, select as d3select, selectAll as d3selectAll, BaseType} from 'd3-selection';
 import {VisualBehavior} from './visualBehavior';
 import powerbi from 'powerbi-visuals-api';
 import DataViewObject = powerbi.DataViewObject;
 import {Visual} from './visual';
-import {AxesDimensions, VisualData} from './visualInterfaces';
+import {AxesDimensions, VisualData, VisualDataPoint} from './visualInterfaces';
 
 interface Selection {
     action: string;
@@ -28,11 +28,11 @@ interface CursorPos {
 }
 
 interface Circles {
-    all: HTMLElement[];
-    selected: HTMLElement[];
-    justSelected: HTMLElement[];
-    justRemoved: HTMLElement[];
-    previousSelected: HTMLElement[] | null;
+    all: Element[];
+    selected: Element[];
+    justSelected: Element[];
+    justRemoved: Element[];
+    previousSelected: Element[] | null;
 }
 
 const selection: Selection = {
@@ -49,7 +49,7 @@ const _circles: Circles = {
     previousSelected: null,
 };
 
-let notifyVisual: ((selectedItems: d3Selection<HTMLElement, unknown, null, undefined>) => void) | undefined = undefined;
+let notifyVisual: ((selectedItems: d3Selection<Element, unknown, null, undefined>) => void) | undefined = undefined;
 let axesDimensions: AxesDimensions | undefined = undefined;
 
 let transparencyProps: DataViewObject | undefined = undefined;
@@ -70,15 +70,16 @@ export function lassoSelectorInit(mainElement: d3Selection<HTMLElement, unknown,
         .on('mouseup.selection', onMouseup);
 }
 
-export function lassoSelectorUpdate<Datum>(
-    circles: d3Selection<never, Datum, never, unknown>,
+export function lassoSelectorUpdate(
+    circles: d3Selection<Element, VisualDataPoint, BaseType, VisualDataPoint[]>,
     pointsTransparencyProperties: DataViewObject,
     visualFillPoint: boolean,
     data: VisualData,
-    callback: (circles: d3Selection<HTMLElement, unknown, never, unknown>) => void,
+    callback: (circles: d3Selection<Element, VisualDataPoint, never, unknown>) => void,
 ): void {
     transparencyProps = pointsTransparencyProperties;
-    axesDimensions = data.axesDimensions;
+    axesDimensions = data?.axesDimensions;
+
     _circles.all = [];
     circles.each(function () {
         _circles.all.push(this);
@@ -87,17 +88,17 @@ export function lassoSelectorUpdate<Datum>(
     fillPoint = visualFillPoint;
 }
 
-//     export function passSavedPointsToLassoUtil(dataPoints: VisualDataPoint[]): void {
-//         for (let i: number = 0; i < dataPoints.length; i++) {
-//             if (dataPoints[i].selected) {
-//                 _circles.selected.push(_circles.all[i]);
-//                 _circles.all[i].setAttribute('data-selection', 'selected');
-//             }
-//         }
-//         if (_circles.previousSelected === null) {
-//             _circles.previousSelected = _circles.selected;
-//         }
-//     }
+export function passSavedPointsToLassoUtil(dataPoints: VisualDataPoint[]): void {
+    for (let i: number = 0; i < dataPoints.length; i++) {
+        if (dataPoints[i].selected) {
+            _circles.selected.push(_circles.all[i]);
+            _circles.all[i].setAttribute('data-selection', 'selected');
+        }
+    }
+    if (_circles.previousSelected === null) {
+        _circles.previousSelected = _circles.selected;
+    }
+}
 
 function uploadUpdateToVisual(): void {
     if (_circles.justSelected.length > 0 && _circles.justRemoved.length > 0) {
@@ -147,7 +148,7 @@ function onMousedown(e: MouseEvent): void {
     showRect();
     if (!e.ctrlKey) {
         emptyCirclesSelection();
-        visualBehavior?.selectionHandler.handleClearSelection();
+        visualBehavior?.selectionHandler?.handleClearSelection();
     }
 }
 
@@ -173,7 +174,7 @@ function onMousemove(e: MouseEvent): void {
     setRectPos(selection.x, selection.y);
     setRectSize(selection.width, selection.height);
     for (let i: number = 0; i < _circles.all.length; i++) {
-        const _this: HTMLElement = _circles.all[i];
+        const _this = _circles.all[i];
         const collided: boolean = detectCollision(_this);
         const state = _this.getAttribute('data-selection');
         if (collided) {
@@ -218,7 +219,7 @@ function onMouseup(): void {
     }
 
     if (!selection.mousemoved) { // Selection by click
-        const target: HTMLElement = selection.clickEvent.target as HTMLElement;
+        const target = selection.clickEvent.target as Element;
 
         if (d3select(target).classed('scatter-dot')) {
             if (selection.clickEvent.ctrlKey) {
@@ -248,7 +249,6 @@ function onMouseup(): void {
 
 // /Events
 
-
 // DOM
 function updateFillOpacity(): void {
     if (_circles.selected.length === 0 && _circles.justSelected.length === 0) {
@@ -259,7 +259,7 @@ function updateFillOpacity(): void {
         }
     } else {
         for (let i: number = 0; i < _circles.all.length; i++) {
-            const circle: HTMLElement = _circles.all[i];
+            const circle = _circles.all[i];
             const d3_circle = d3select(circle);
             if (
                 circle.getAttribute('data-selection') === 'selected'
@@ -283,7 +283,7 @@ function updateFillOpacity(): void {
 
 // Arrays manipulate
 function emptyCirclesSelection(): void {
-    const targets: HTMLElement[][] = [_circles.selected, _circles.justSelected, _circles.justRemoved];
+    const targets: Element[][] = [_circles.selected, _circles.justSelected, _circles.justRemoved];
     for (let i: number = 0; i < targets.length; i++) {
         for (let j: number = 0; j < targets[i].length; j++) {
             targets[i][j].removeAttribute('data-selection');
@@ -378,7 +378,7 @@ function thereAreSelectionChanges(): boolean {
     return false;
 }
 
-function detectCollision(circle: HTMLElement): boolean {
+function detectCollision(circle: Element): boolean {
     const bounds = circle.getBoundingClientRect();
     // Consider circle as square and detect collision
     return selection.x <= bounds.right

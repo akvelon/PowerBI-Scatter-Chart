@@ -104,9 +104,6 @@ export function renderLegend(
         dataPoints: [],
     };
 
-    // TODO Remove
-    // const svgLegendElement = legendElement[0].parentNode;
-
     if (layerLegendData) {
         legendData.title = layerLegendData.title || '';
 
@@ -133,12 +130,6 @@ export function renderLegend(
         legend.changeOrientation(LegendPosition.Top);
     }
 
-    // TODO Remove
-    // if (legendData.dataPoints.length === MinAmountOfDataPointsInTheLegend
-    //     && !legendData.grouped) {
-    //     // legendData.dataPoints = [];
-    // }
-
     legend.drawLegend(legendData, {
         height: viewport.height,
         width: viewport.width,
@@ -146,11 +137,7 @@ export function renderLegend(
 
     legendModule.positionChartArea(mainSvgElement, legend);
 
-    // TODO Remove
-    // const legendGroup = svgLegendElement.select('#legendGroup').node();
-
     const legendItems = svgLegendElement.select<SVGGElement>('#legendGroup').selectAll<SVGElement, unknown>('.legendItem, .legendTitle').nodes();
-
     if (legendItems && legendItems.length > 0) {
         let offset: number = 0;
 

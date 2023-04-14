@@ -17,7 +17,6 @@ export function getGradientMeasureIndex(dataViewCategorical?: DataViewCategorica
     return -1;
 }
 
-
 export function hasGradientRole(dataViewCategorical?: DataViewCategorical | null): boolean {
     return getGradientMeasureIndex(dataViewCategorical) >= 0;
 }

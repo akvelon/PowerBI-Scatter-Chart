@@ -23,7 +23,6 @@ const DataLabelBorderRadius: number = 4;
 const DataLabelBackgroundOffset: number = 5;
 
 type WithRequired<T, K extends keyof T> = T & { [P in K]-?: T[P] };
-
 type VisualDataPointWithIndex = WithRequired<VisualDataPoint, 'index'>;
 
 class Selectors {

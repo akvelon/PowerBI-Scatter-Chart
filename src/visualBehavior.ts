@@ -3,33 +3,44 @@ import {
     IInteractiveBehavior,
     ISelectionHandler,
 } from 'powerbi-visuals-utils-interactivityutils/lib/interactivityBaseService';
-import {VisualDataPoint} from './visualInterfaces';
+import {VisualData, VisualDataPoint} from './visualInterfaces';
 import {Visual} from './visual';
 import {LegendDataPoint} from 'powerbi-visuals-utils-chartutils/lib/legend/legendInterfaces';
-import {Selection, BaseType} from 'd3-selection';
+import {Selection, BaseType, Selection as d3Selection} from 'd3-selection';
+import powerbi from 'powerbi-visuals-api';
+import DataViewObject = powerbi.DataViewObject;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import ISelectionId = powerbi.extensibility.ISelectionId;
+import {saveSelection} from './selectionSaveUtils';
+import {compareObjects} from './utils';
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface VisualBehaviorOptions extends IBehaviorOptions<VisualDataPoint> {
-    // clearCatcher: d3.Selection<any>;
-    // selection: d3.Selection<VisualDataPoint>;
-    legendItems: Selection<BaseType, LegendDataPoint, never, never>;
-    // getFillOpacity: (dataPoint: VisualDataPoint) => number;
-    // pointsTransparencyProperties: DataViewObject;
-    // lassoSelectorUpdate?: <VisualDataPoint>(circles: d3.Selection<VisualDataPoint>, pointsTransparencyProperties, fillPoint, data, callback: (circles: d3.Selection<VisualDataPoint>) => void) => void;
-    // host?: IVisualHost;
-    // data?: VisualData;
-    // fillPoint?: boolean;
-    // selectionSaveSettings?: ISelectionId[];
+    clearCatcher: Selection<any, any, any, any>;
+    selection: Selection<Element, VisualDataPoint, BaseType, VisualDataPoint[]>;
+    legendItems: Selection<BaseType, LegendDataPoint, SVGSVGElement, unknown>;
+    getFillOpacity: (dataPoint: VisualDataPoint) => number;
+    pointsTransparencyProperties: DataViewObject | null;
+    lassoSelectorUpdate: (
+        circles: Selection<Element, VisualDataPoint, BaseType, VisualDataPoint[]>,
+        pointsTransparencyProperties: DataViewObject | null,
+        visualFillPoint: boolean | null,
+        data: VisualData | null,
+        callback: (circles: d3Selection<Element, VisualDataPoint, never, unknown>) => void,
+    ) => void;
+    host: IVisualHost;
+    data: VisualData | null;
+    fillPoint: boolean | null;
+    selectionSaveSettings: ISelectionId[] | null;
 }
 
 export class VisualBehavior implements IInteractiveBehavior {
-    // Implementation of IInteractiveBehavior
-    options: VisualBehaviorOptions;
-    visual: Visual;
+    private visual: Visual;
 
-//         private skipNextRendering: boolean = false;
+    public selectionHandler: ISelectionHandler | undefined = undefined;
 
-    public selectionHandler: ISelectionHandler;
+    private options: VisualBehaviorOptions | undefined = undefined;
+    private skipNextRendering: boolean = false;
+
 
     constructor(visual: Visual) {
         this.visual = visual;
@@ -39,74 +50,66 @@ export class VisualBehavior implements IInteractiveBehavior {
         behaviorOptions: VisualBehaviorOptions,
         selectionHandler: ISelectionHandler): void {
 
-//             const multiSelect: boolean = true;
-
         this.options = behaviorOptions;
         this.selectionHandler = selectionHandler;
 
         behaviorOptions.legendItems.on('click', (item: any) => {
             selectionHandler.handleSelection(item, false); // Selects the dataPoint
         });
-//
-//             if (this.options.lassoSelectorUpdate) {
-//                 this.options.lassoSelectorUpdate(this.options.selection, this.options.pointsTransparencyProperties, this.options.fillPoint, this.options.data, (circles) => {
-//                     Visual.skipNextUpdate = true; // we prevent the next update so that the Play Axis doesn't get resetted
-//                     this.skipNextRendering = true;
-//                     selectionHandler.handleClearSelection();
-//                     if (circles.data().length > 0) {
-//                         selectionHandler.handleSelection(circles.data(), false);
-//                     } else {
-//                         selectionSaveUtils.saveSelection(circles.data(), this.options.host);
-//                     }
-//                 });
-//             }
+
+        if (this.options.lassoSelectorUpdate) {
+            this.options.lassoSelectorUpdate(
+                this.options.selection,
+                this.options.pointsTransparencyProperties,
+                this.options.fillPoint,
+                this.options.data,
+                (circles) => {
+                    Visual.skipNextUpdate = true; // we prevent the next update so that the Play Axis doesn't get resetted
+                    this.skipNextRendering = true;
+                    selectionHandler.handleClearSelection();
+                    if (circles.data().length > 0) {
+                        selectionHandler.handleSelection(circles.data(), false);
+                    } else {
+                        saveSelection(circles.data(), behaviorOptions.host);
+                    }
+                });
+        }
     }
 
     public renderSelection(hasSelection: boolean): void {
-//             if (this.skipNextRendering) {
-//                 this.skipNextRendering = false;
-//                 return;
-//             }
-//             const currentSelection = this.options.selection.filter(d => d.selected && d.isShown);
-//             const selectedDataPoints: VisualDataPoint[] = currentSelection.data();
-//
-//             Visual.skipNextUpdate = true;
-//             this.visual.playAxis.onSelect(currentSelection, true);
-//
-//             // Style for legend filter
-//             this.options.selection.style({
-//                 "fill-opacity": d => this.options.fillPoint ? this.options.getFillOpacity(d) : 0,
-//                 "stroke-opacity": d => {
-//                     if (this.options.fillPoint) {
-//                         if (d.selected) {
-//                             return 1;
-//                         } else {
-//                             return 0;
-//                         }
-//                     } else {
-//                         return this.options.getFillOpacity(d);
-//                     }
-//                 },
-//                 "stroke": d => {
-//                     if (this.options.fillPoint) {
-//                         if (d.selected) {
-//                             return Visual.DefaultStrokeSelectionColor;
-//                         }
-//                     }
-//
-//                     return d.fill;
-//                 },
-//                 "stroke-width": d => {
-//                     if (d.selected) {
-//                         return Visual.DefaultStrokeSelectionWidth;
-//                     }
-//
-//                     return Visual.DefaultStrokeWidth;
-//                 }
-//             });
-//
-//             if (!visualUtils.compareObjects(selectedDataPoints, this.options.selectionSaveSettings, "identity.key") && hasSelection) {
-//                 selectionSaveUtils.saveSelection(selectedDataPoints, this.options.host);
-//             }
+        if (this.skipNextRendering) {
+            this.skipNextRendering = false;
+            return;
+        }
+
+        const thisOptions = this.options;
+        if (!thisOptions) {
+            return;
+        }
+
+        const currentSelection = thisOptions.selection.filter(d => d.selected && (d.isShown ?? false));
+        const selectedDataPoints = currentSelection.data();
+
+        Visual.skipNextUpdate = true;
+        this.visual.playAxis.onSelect(currentSelection, true);
+
+        // Style for legend filter
+        thisOptions.selection
+            .style('fill-opacity', d => thisOptions.fillPoint ? thisOptions.getFillOpacity(d) : 0)
+            .style('stroke-opacity', d =>
+                thisOptions.fillPoint
+                    ? d.selected ? 1 : 0
+                    : thisOptions?.getFillOpacity(d) ?? null)
+            .style('stroke', d =>
+                thisOptions?.fillPoint && d.selected
+                    ? Visual.DefaultStrokeSelectionColor
+                    : d.fill ?? null)
+            .style('stroke-width', d => d.selected
+                ? Visual.DefaultStrokeSelectionWidth
+                : Visual.DefaultStrokeWidth);
+
+        if (!compareObjects(selectedDataPoints, thisOptions.selectionSaveSettings, 'identity.key') && hasSelection) {
+            saveSelection(selectedDataPoints, thisOptions.host);
+        }
     }
 }

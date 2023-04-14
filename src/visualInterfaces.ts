@@ -104,9 +104,9 @@ export interface VisualDataLabelsSettings extends PointDataLabelsSettings {
 // }
 
 export interface VisualDataPoint extends SelectableDataPoint, TooltipEnabledDataPoint {
-    x: number | null; // PrimitiveValue;
-    y: number | null; // PrimitiveValue;
-    size: /*number |*/ ISize | null;
+    x: number | null;
+    y: number | null;
+    size: ISize | null;
     radius: VisualRadiusData;
     fill?: string;
     colorFill?: string;

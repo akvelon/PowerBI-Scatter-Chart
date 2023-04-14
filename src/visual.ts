@@ -5,7 +5,7 @@ import {
     appendClearCatcher,
     IInteractivityService,
 } from 'powerbi-visuals-utils-interactivityutils/lib/interactivityBaseService';
-import {VisualBehavior} from './visualBehavior';
+import {VisualBehavior, VisualBehaviorOptions} from './visualBehavior';
 import {
     createInteractivitySelectionService,
     SelectableDataPoint,
@@ -79,7 +79,7 @@ import {IAxisProperties} from 'powerbi-visuals-utils-chartutils/lib/axis/axisInt
 import {bindLabelLayout, setDatapointVisibleAngleRange} from './labelLayoutUtils';
 
 import '../style/visual.less';
-import {lassoSelectorInit} from './selectionUtil';
+import {lassoSelectorInit, lassoSelectorUpdate, passSavedPointsToLassoUtil} from './selectionUtil';
 import IVisual = powerbi.extensibility.visual.IVisual;
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
 import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
@@ -186,7 +186,7 @@ export class Visual implements IVisual {
     private settings: VisualSettings | null = null;
     private axisLabelsGroup: Selection<BaseType, string | null, SVGElement, unknown> | null = null;
     private scatterGroupSelect: Selection<BaseType, VisualDataPoint[], SVGSVGElement, unknown> | null = null;
-    private scatterSelect: Selection<BaseType, VisualDataPoint, BaseType, VisualDataPoint[]> | null = null;
+    private scatterSelect: Selection<SVGCircleElement, VisualDataPoint, BaseType, VisualDataPoint[]> | null = null;
     private legendProperties: DataViewObject | null = null;
     private categoryAxisProperties: DataViewObject | null = null;
     private valueAxisProperties: DataViewObject | null = null;
@@ -198,17 +198,7 @@ export class Visual implements IVisual {
     private selectionSaveSettings: VisualDataViewObject | null = null;
     private yAxisIsCategorical: boolean | null = null;
     private fillPoint: boolean | null = null;
-
-
-//         private labelBackgroundGraphicsContext: d3.selection.Update<any>;
-
-
-//         private isSelectionRestored: boolean = false;
-
-
-//         // DataViewObject Properties
-//
-
+    private isSelectionRestored: boolean = false;
 
     constructor(options: VisualConstructorOptions) {
         try {
@@ -469,10 +459,6 @@ export class Visual implements IVisual {
                 width: options.viewport.width - this.legend.getMargins().width,
             };
 
-            // TODO Remove
-            // // Update the size of our SVG element
-            // if (this.mainSvgElement) {
-
             // viewport size is calculated wrong sometimes, which causing Play Axis bugs.
             // We make it safe using max value between viewport and mainElement for height and width.
             const mainElementHeight: number = (this.mainElement.node() as HTMLElement).clientHeight;
@@ -480,9 +466,6 @@ export class Visual implements IVisual {
             this.mainSvgElement
                 .attr('width', Math.max(mainElementWidth, viewport.width))
                 .attr('height', Math.max(mainElementHeight, viewport.height));
-
-            // TODO Remove
-            // }
 
             // Set up margins for our visual
             const visualMargin: IMargin = {top: 8, bottom: 10, left: 10, right: 10};
@@ -1043,7 +1026,7 @@ export class Visual implements IVisual {
 
         // Add an svg group containing the dots.
         const groups = this.visualSvgGroupMarkers
-            .selectAll(Selectors.ScatterGroup.selectorName)
+            .selectAll<SVGGElement, unknown>(Selectors.ScatterGroup.selectorName)
             .data([dataPoints]);
 
         const groupsEnter = groups.enter()
@@ -1054,7 +1037,7 @@ export class Visual implements IVisual {
 
         // Add dots to the group.
         const groupDots = groups.merge(groupsEnter)
-            .selectAll(Selectors.ScatterDot.selectorName)
+            .selectAll<SVGCircleElement, unknown>(Selectors.ScatterDot.selectorName)
             .data(d => d);
 
         const groupDotsEnter = groupDots.enter()
@@ -1108,46 +1091,46 @@ export class Visual implements IVisual {
 
         bindTooltip(this.tooltipServiceWrapper, this.scatterSelect);
 
-//             this.bindInteractivityService(scatterSelect, dataPoints);
-//
-//             // restore saved selection
-//             if (!this.isSelectionRestored) {
-//                 let newDataPoints = this.data.dataPoints.filter(d => {
-//                     return this.selectionSaveSettings.selection.some(item => {
-//                         return (<any>item).identity.key === (<any>d).identity.key;
-//                     });
-//                 });
-//
-//                 this.behavior.selectionHandler.handleSelection(newDataPoints, false);
-//                 this.interactivityService.restoreSelection(newDataPoints.map(d => d.identity as ISelectionId));
-//                 visualUtils.passSavedPointsToLassoUtil(this.data.dataPoints);
-//                 this.isSelectionRestored = true;
-//             }
+        this.bindInteractivityService(this.scatterSelect, dataPoints);
+
+        // restore saved selection
+        if (!this.isSelectionRestored) {
+            const newDataPoints = data.dataPoints.filter(d => {
+                return this.selectionSaveSettings?.selection.some(item => {
+                    return (<any>item).identity.key === (<any>d).identity.key;
+                });
+            });
+
+            this.behavior.selectionHandler?.handleSelection(newDataPoints, false);
+            passSavedPointsToLassoUtil(data.dataPoints);
+            this.isSelectionRestored = true;
+        }
     }
 
-//         private bindInteractivityService(
-//             dataPointsSelection: d3.Selection<VisualDataPoint>,
-//             dataPoints: VisualDataPoint[]): void {
-//
-//             if (!this.behavior || !this.interactivityService) {
-//                 return;
-//             }
-//
-//             const behaviorOptions: VisualBehaviorOptions = {
-//                 lassoSelectorUpdate: visualUtils.lassoSelectorUpdate.bind(visualUtils),
-//                 clearCatcher: this.clearCatcher,
-//                 selection: dataPointsSelection,
-//                 legendItems: this.legendElement.selectAll(".legendItem"),
-//                 getFillOpacity: this.getFillOpacity.bind(this),
-//                 pointsTransparencyProperties: this.pointsTransparencyProperties,
-//                 host: this.host,
-//                 data: this.data,
-//                 fillPoint: this.fillPoint,
-//                 selectionSaveSettings: this.selectionSaveSettings.selection
-//             };
-//
-//             this.interactivityService.bind(dataPoints, this.behavior, behaviorOptions);
-//         }
+    private bindInteractivityService(
+        dataPointsSelection: Selection<Element, VisualDataPoint, BaseType, VisualDataPoint[]>,
+        dataPoints: VisualDataPoint[]): void {
+        if (!this.behavior || !this.interactivityService) {
+            return;
+        }
+
+        const behaviorOptions: VisualBehaviorOptions = {
+            lassoSelectorUpdate,
+            clearCatcher: this.clearCatcher,
+            selection: dataPointsSelection,
+            legendItems: this.legendElement.selectAll('.legendItem'),
+            getFillOpacity: this.getFillOpacity.bind(this),
+            pointsTransparencyProperties: this.pointsTransparencyProperties,
+            host: this.host,
+            data: this.data,
+            fillPoint: this.fillPoint,
+            selectionSaveSettings: this.selectionSaveSettings?.selection ?? null,
+            dataPoints,
+            behavior: this.behavior,
+        };
+
+        this.interactivityService.bind(behaviorOptions);
+    }
 
     private getFillOpacity(dataPoint: VisualDataPoint): number {
         const pointsTransparencyProperties = this.pointsTransparencyProperties;
@@ -1196,13 +1179,6 @@ export class Visual implements IVisual {
 
     // eslint-disable-next-line max-lines-per-function
     private renderAxes(data: VisualData) {
-        // Before rendering an axis, we need to remove an old one.
-        // Otherwise, our visual will be cluttered by multiple axis objects, which can
-        // affect performance of our visual.
-
-        // Why axis doesn't need to remove?
-        // this.xAxisSvgGroup.selectAll("*").remove();
-        // this.yAxisSvgGroup.selectAll("*").remove();
         // Now we call the axis funciton, that will render an axis on our visual.
         if (this.categoryAxisProperties?.['show'] !== undefined && !this.categoryAxisProperties['show']) {
             this.xAxisSvgGroup.selectAll('*').remove();

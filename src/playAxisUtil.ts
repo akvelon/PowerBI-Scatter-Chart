@@ -1,5 +1,6 @@
-import {Selection as d3Selection} from 'd3-selection';
+import {BaseType, Selection as d3Selection} from 'd3-selection';
 import {ITooltipServiceWrapper} from 'powerbi-visuals-utils-tooltiputils';
+import {VisualDataPoint} from './visualInterfaces';
 
 interface PlayAxisMeasures {
     width: number;
@@ -71,7 +72,7 @@ export class PlayAxis {
     // general
     private enabled: boolean = true;
 //     private visualSize: ISize;
-//     private groupedDataPoints: VisualDataPoint[][];
+    private groupedDataPoints: VisualDataPoint[][];
 //     private groupNames: string[];
 //     private currentGroupIndex: number;
 //     private valuesType: PlayAxisValueType;
@@ -173,22 +174,21 @@ export class PlayAxis {
         return this.enabled ? Constants.MarginTop + Constants.Height : 0;
     }
 
-//     onSelect(currentSelection: d3.Selection<any>, transition: boolean): void {
-//         // this method is called when any of data points are being selected or deselected
-//
-//         if (!this.enabled || !this.groupedDataPoints) {
-//             return;
-//         }
-//
-//         this.selectedItems = currentSelection;
-//
-//         this.stopAutoPlay();
-//
-//         const pathOwners: VisualDataPoint[] = this.updatePathOwners();
-//
-//         this.renderPaths(pathOwners, transition);
-//     }
-//
+    onSelect(currentSelection: d3Selection<Element, VisualDataPoint, BaseType, VisualDataPoint[]>, transition: boolean): void {
+        // this method is called when any of data points are being selected or deselected
+        if (!this.enabled || !this.groupedDataPoints) {
+            return;
+        }
+
+        // this.selectedItems = currentSelection;
+        //
+        // this.stopAutoPlay();
+        //
+        // const pathOwners: VisualDataPoint[] = this.updatePathOwners();
+        //
+        // this.renderPaths(pathOwners, transition);
+    }
+
 //     // End: Public
 //
 //     // Update

@@ -4,7 +4,7 @@ import DataViewValueColumn = powerbi.DataViewValueColumn;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
 import {valueFormatter} from 'powerbi-visuals-utils-formattingutils';
-import {ITooltipServiceWrapper, TooltipEnabledDataPoint, TooltipEventArgs} from 'powerbi-visuals-utils-tooltiputils';
+import {ITooltipServiceWrapper} from 'powerbi-visuals-utils-tooltiputils';
 import {BaseType, Selection} from 'd3-selection';
 import {VisualDataPoint} from './visualInterfaces';
 

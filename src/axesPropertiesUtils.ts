@@ -102,32 +102,6 @@ export function getValueAxisProperties(
     return dataViewObject;
 }
 
-// export function shouldRenderAxis(
-//     axisProperties: IAxisProperties,
-//     propertyName: string = "show"): boolean {
-//
-//     const MinAmountOfValues: number = 0;
-//
-//     if (!axisProperties) {
-//         return false;
-//     }
-//     else if (axisProperties.isCategoryAxis
-//         && (!this.categoryAxisProperties
-//             || this.categoryAxisProperties[propertyName] == null
-//             || this.categoryAxisProperties[propertyName])) {
-//
-//         return axisProperties.values && axisProperties.values.length > MinAmountOfValues;
-//     }
-//     else if (!axisProperties.isCategoryAxis && (!this.valueAxisProperties
-//         || this.valueAxisProperties[propertyName] == null
-//         || this.valueAxisProperties[propertyName])) {
-//
-//         return axisProperties.values && axisProperties.values.length > MinAmountOfValues;
-//     }
-//
-//     return false;
-// }
-
 export function setCategoryAxisProperties(
     categoryAxisProperties: DataViewObject,
     objects: DataViewObjects = {}) {
