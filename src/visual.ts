@@ -71,7 +71,7 @@ import {
     getUnitType,
 } from './utils';
 import {hasRoleInValueColumn} from 'powerbi-visuals-utils-dataviewutils/lib/dataRoleHelper';
-import {createTooltipInfo, TooltipSeriesDataItem} from './tooltipBuilder';
+import {bindTooltip, createTooltipInfo, TooltipSeriesDataItem} from './tooltipBuilder';
 import {translate as svgTranslate} from 'powerbi-visuals-utils-svgutils/lib/manipulation';
 import {max as d3max, min as d3min} from 'd3-array';
 import {scaleLinear} from 'd3-scale';
@@ -184,8 +184,9 @@ export class Visual implements IVisual {
     private data: VisualData | null = null;
     private dataView: DataView | null = null;
     private settings: VisualSettings | null = null;
-    private axisLabelsGroup: Selection<BaseType, string | null, SVGElement, unknown> | null = null; // string
+    private axisLabelsGroup: Selection<BaseType, string | null, SVGElement, unknown> | null = null;
     private scatterGroupSelect: Selection<BaseType, VisualDataPoint[], SVGSVGElement, unknown> | null = null;
+    private scatterSelect: Selection<BaseType, VisualDataPoint, BaseType, VisualDataPoint[]> | null = null;
     private legendProperties: DataViewObject | null = null;
     private categoryAxisProperties: DataViewObject | null = null;
     private valueAxisProperties: DataViewObject | null = null;
@@ -198,7 +199,7 @@ export class Visual implements IVisual {
     private yAxisIsCategorical: boolean | null = null;
     private fillPoint: boolean | null = null;
 
-// private scatterSelect: Selection<BaseType, VisualDataPoint, BaseType, unknown> | null = null;
+
 //         private labelBackgroundGraphicsContext: d3.selection.Update<any>;
 
 
@@ -1060,6 +1061,8 @@ export class Visual implements IVisual {
             .append('circle')
             .classed(Selectors.ScatterDot.className, true);
 
+        this.scatterSelect = groupDots.merge(groupDotsEnter);
+
         groupDots.exit().remove();
 
         groupDots.merge(groupDotsEnter)
@@ -1103,8 +1106,8 @@ export class Visual implements IVisual {
             this.labelGraphicsContext,
             <number>this.shapesSize?.size);
 
-//             tooltipBuilder.bindTooltip(this.tooltipServiceWrapper, scatterSelect);
-//
+        bindTooltip(this.tooltipServiceWrapper, this.scatterSelect);
+
 //             this.bindInteractivityService(scatterSelect, dataPoints);
 //
 //             // restore saved selection

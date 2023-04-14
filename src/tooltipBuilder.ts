@@ -4,6 +4,9 @@ import DataViewValueColumn = powerbi.DataViewValueColumn;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
 import {valueFormatter} from 'powerbi-visuals-utils-formattingutils';
+import {ITooltipServiceWrapper, TooltipEnabledDataPoint, TooltipEventArgs} from 'powerbi-visuals-utils-tooltiputils';
+import {BaseType, Selection} from 'd3-selection';
+import {VisualDataPoint} from './visualInterfaces';
 
 export interface TooltipSeriesDataItem {
     value?: any;
@@ -135,15 +138,10 @@ export function getFormattedValue(column: DataViewMetadataColumn, value: any): a
     return valueFormatter.format(value, formatString);
 }
 
-//     export function bindTooltip(
-//         tooltipServiceWrapper: ITooltipServiceWrapper,
-//         selection: d3.Selection<any>): void {
-//         tooltipServiceWrapper.addTooltip(
-//             selection,
-//             (tooltipEvent: TooltipEventArgs<TooltipEnabledDataPoint>) => {
-//                 return tooltipEvent.data && tooltipEvent.data.tooltipInfo
-//                     ? tooltipEvent.data.tooltipInfo
-//                     : null;
-//             });
-//     }
-// }
+export function bindTooltip(
+    tooltipServiceWrapper: ITooltipServiceWrapper,
+    selection: Selection<BaseType, VisualDataPoint, BaseType, VisualDataPoint[]>): void {
+    tooltipServiceWrapper.addTooltip<VisualDataPoint>(
+        selection,
+        (tooltipEvent) => tooltipEvent.tooltipInfo);
+}
