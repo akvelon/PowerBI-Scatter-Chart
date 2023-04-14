@@ -721,7 +721,7 @@ export class Visual implements IVisual {
                 this.legend.getMargins().height + xTickOffset,
                 options.viewport,
                 visualMargin);
-            // this.renderAxesConstantLines(this.data);
+            this.renderAxesConstantLines(this.data);
 
 //             // Play Axis
 //             if (this.playAxis.isEnabled()) {
@@ -1386,6 +1386,52 @@ export class Visual implements IVisual {
 
                 if (yFontSizeString) {
                     textSelectionY.style('font-size', yFontSizeString);
+                }
+            });
+    }
+
+    private renderAxesConstantLines(data: VisualData) {
+        const axesLinesData = [this.xAxisConstantLineProperties, this.yAxisConstantLineProperties];
+        const size = data.size;
+        const xScale = data.axes.x.scale;
+        const yScale = data.axes.y.scale;
+
+        const axesLinesGroup = this.axisConstantLinesGroup
+            .selectAll(Selectors.ConstantLine.selectorName)
+            .data(axesLinesData);
+
+        const axesLinesGroupEnter = axesLinesGroup.enter()
+            .append('line')
+            .classed(Selectors.ConstantLine.className, true);
+
+        axesLinesGroup.exit().remove();
+
+        axesLinesGroup.merge(axesLinesGroupEnter)
+            .call((lines) => {
+                const xConstantLine = d3select(lines.nodes()[0]);
+                if (axesLinesData[0]?.show) {
+                    xConstantLine
+                        .attr('x1', xScale(axesLinesData[0].value))
+                        .attr('x2', xScale(axesLinesData[0].value))
+                        .attr('y1', '0')
+                        .attr('y2', size.height)
+                        .attr('stroke', <string>axesLinesData[0].color)
+                        .style('opacity', 1);
+                } else {
+                    xConstantLine.style('opacity', 0);
+                }
+
+                const yConstantLine = d3select(lines.nodes()[1]);
+                if (axesLinesData[1]?.show) {
+                    yConstantLine
+                        .attr('y1', yScale(axesLinesData[1].value))
+                        .attr('y2', yScale(axesLinesData[1].value))
+                        .attr('x1', '0')
+                        .attr('x2', size.width)
+                        .attr('stroke', <string>axesLinesData[1].color)
+                        .style('opacity', 1);
+                } else {
+                    yConstantLine.style('opacity', 0);
                 }
             });
     }
