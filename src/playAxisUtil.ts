@@ -286,9 +286,6 @@ export class PlayAxis {
                         .on('end', function () {
                             el.style('display', 'none');
                         });
-                    //     .each('end', function () {
-                    //
-                    // });
                 } else {
                     el.style('opacity', 0)
                         .style('display', 'none');
