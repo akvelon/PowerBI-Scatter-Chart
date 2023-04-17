@@ -46,7 +46,7 @@ export function getVisualLabelLayout(
     return {
         labelText: (dataPoint: VisualDataPoint) => {
             return getLabelFormattedText({
-                label: dataPoint.formattedCategory ? dataPoint.formattedCategory() : undefined,
+                label: dataPoint.formattedCategory(),
                 fontSize: labelSettings.fontSize,
                 maxWidth: viewport.width,
             });
@@ -73,7 +73,7 @@ export function getVisualLabelLayout(
             },
         },
         filter: (dataPoint: VisualDataPoint) => {
-            return dataPoint != null && dataPoint.formattedCategory != undefined && dataPoint.formattedCategory() != null;
+            return dataPoint != null && dataPoint.formattedCategory() != null;
         },
         style: {
             'fill': (dataPoint: VisualDataPoint) => {
@@ -356,7 +356,7 @@ export function showLabelBackground(
                     dx: delta?.dx ?? 0,
                     dy: delta?.dy ?? 0,
                     fontSize: PixelConverter.fromPointToPixel(parseInt(dd.labelFontSize)),
-                    textLength: dd.formattedCategory?.().length,
+                    textLength: dd.formattedCategory().length,
                 };
             });
         });

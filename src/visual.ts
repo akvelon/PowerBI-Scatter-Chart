@@ -1,4 +1,5 @@
 import 'jquery-ui-dist/jquery-ui';
+import 'd3-transition';
 
 import powerbi from 'powerbi-visuals-api';
 import {createClassAndSelector} from 'powerbi-visuals-utils-svgutils/lib/cssConstants';
@@ -17,7 +18,7 @@ import {
     IAxes,
     IAxesSize,
     ICategoryData,
-    IMargin, VisualAxesLabels,
+    IMargin, PlayAxisUpdateData, VisualAxesLabels,
     VisualData,
     VisualDataLabelsSettings,
     VisualDataPoint,
@@ -165,8 +166,8 @@ export class Visual implements IVisual {
 
     public readonly playAxis: PlayAxis;
 
-    private readonly mainElement: Selection<HTMLElement, unknown, null, undefined>;
-    private readonly mainSvgElement: Selection<SVGSVGElement, unknown, null, undefined>;
+    private readonly mainElement: Selection<HTMLElement, undefined, null, undefined>;
+    private readonly mainSvgElement: Selection<SVGSVGElement, undefined, null, undefined>;
     private readonly legendElement: Selection<SVGSVGElement, unknown, null, undefined>;
     private readonly visualSvgGroup: Selection<SVGGElement, unknown, null, undefined>;
     private readonly visualSvgGroupMarkers: Selection<SVGSVGElement, unknown, null, undefined>;
@@ -187,8 +188,8 @@ export class Visual implements IVisual {
     private dataView: DataView | null = null;
     private settings: VisualSettings | null = null;
     private axisLabelsGroup: Selection<BaseType, string | null, SVGElement, unknown> | null = null;
-    private scatterGroupSelect: Selection<BaseType, VisualDataPoint[], SVGSVGElement, unknown> | null = null;
-    private scatterSelect: Selection<SVGCircleElement, VisualDataPoint, BaseType, VisualDataPoint[]> | null = null;
+    private scatterGroupSelect: Selection<SVGGElement, VisualDataPoint[], SVGSVGElement, unknown> | null = null;
+    private scatterSelect: Selection<SVGCircleElement, VisualDataPoint, BaseType, unknown> | null = null;
     private legendProperties: DataViewObject | null = null;
     private categoryAxisProperties: DataViewObject | null = null;
     private valueAxisProperties: DataViewObject | null = null;
@@ -709,27 +710,27 @@ export class Visual implements IVisual {
                 visualMargin);
             this.renderAxesConstantLines(this.data);
 
-//             // Play Axis
-//             if (this.playAxis.isEnabled()) {
-//                 const playAxisUpdateData: PlayAxisUpdateData = {
-//                     metadata,
-//                     viewport: options.viewport,
-//                     visualSize,
-//                     visualMargin,
-//                     axesSize,
-//                     legendSize: this.legend.getMargins(),
-//                     legendPosition: this.legend.getOrientation(),
-//                     xTickOffset,
-//                     yTickOffset,
-//                     dataPoints,
-//                     metadataColumn: playAxisCategory.source,
-//                     scatterGroupSelect: this.scatterGroupSelect,
-//                     scatterSelect: this.scatterSelect,
-//                     updateType: options.type,
-//                     axes: this.data.axes
-//                 };
-//                 this.playAxis.update(playAxisUpdateData);
-//             }
+            // Play Axis
+            if (this.playAxis.isEnabled()) {
+                const playAxisUpdateData: PlayAxisUpdateData = {
+                    metadata,
+                    viewport: options.viewport,
+                    visualSize,
+                    visualMargin,
+                    axesSize,
+                    legendSize: this.legend.getMargins(),
+                    legendPosition: this.legend.getOrientation(),
+                    xTickOffset,
+                    yTickOffset,
+                    dataPoints,
+                    metadataColumn: playAxisCategory?.source,
+                    scatterGroupSelect: this.scatterGroupSelect,
+                    scatterSelect: this.scatterSelect,
+                    updateType: options.type,
+                    axes: this.data.axes,
+                };
+                this.playAxis.update(playAxisUpdateData);
+            }
             console.log('=== UPDATE END ===');
         } catch (e) {
             console.error('=== UPDATE ERROR ===');
@@ -1034,6 +1035,8 @@ export class Visual implements IVisual {
         const groupsEnter = groups.enter()
             .append('g')
             .classed(Selectors.ScatterGroup.className, true);
+
+        this.scatterGroupSelect = groups.merge(groupsEnter);
 
         groups.exit().remove();
 
@@ -2171,7 +2174,7 @@ export class Visual implements IVisual {
 
                     instances.push({
                         objectName: 'dataPoint',
-                        displayName: seriesDataPoints.formattedCategory?.(),
+                        displayName: seriesDataPoints.formattedCategory(),
                         selector: ColorHelper.normalizeSelector(
                             (seriesDataPoints.identity as IVisualSelectionId).getSelector(),
                             true),

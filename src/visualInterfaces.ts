@@ -6,7 +6,7 @@ import PrimitiveValue = powerbi.PrimitiveValue;
 import {ISize} from 'powerbi-visuals-utils-svgutils/lib/shapes/shapesInterfaces';
 import {IAxisProperties} from 'powerbi-visuals-utils-chartutils/lib/axis/axisInterfaces';
 import {PointDataLabelsSettings} from 'powerbi-visuals-utils-chartutils/lib/dataLabel/dataLabelInterfaces';
-import {LegendData} from 'powerbi-visuals-utils-chartutils/lib/legend/legendInterfaces';
+import {LegendData, LegendPosition} from 'powerbi-visuals-utils-chartutils/lib/legend/legendInterfaces';
 import DataViewCategoryColumn = powerbi.DataViewCategoryColumn;
 import DataViewValueColumnGroup = powerbi.DataViewValueColumnGroup;
 import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
@@ -15,6 +15,9 @@ import DataViewObjects = powerbi.DataViewObjects;
 import NumberRange = powerbi.NumberRange;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import {ScaleLinear} from 'd3-scale';
+import IViewport = powerbi.IViewport;
+import {BaseType, Selection, Selection as d3Selection} from 'd3-selection';
+import VisualUpdateType = powerbi.VisualUpdateType;
 
 export interface IMargin {
     top: number;
@@ -111,7 +114,7 @@ export interface VisualDataPoint extends SelectableDataPoint, TooltipEnabledData
     fill?: string;
     colorFill?: string;
     columnGroup: DataViewValueColumnGroup;
-    formattedCategory?: () => string;
+    formattedCategory: () => string;
     tooltipInfo: VisualTooltipDataItem[];
     labelFill?: string;
     labelFontSize: any;
@@ -202,23 +205,23 @@ export interface VisualDataViewObject extends DataViewObject {
     selection: VisualDataPoint[];
 }
 
-// export interface PlayAxisUpdateData {
-//     metadata: VisualMeasureMetadata;
-//     viewport: IViewport;
-//     visualSize: ISize;
-//     visualMargin: IMargin;
-//     axesSize: IAxesSize;
-//     legendSize: IViewport;
-//     legendPosition: LegendPosition;
-//     xTickOffset: number;
-//     yTickOffset: number;
-//     dataPoints: VisualDataPoint[];
-//     metadataColumn: DataViewMetadataColumn;
-//     scatterGroupSelect: d3.selection.Update<VisualDataPoint[]>;
-//     scatterSelect: d3.Selection<any>;
-//     updateType: VisualUpdateType;
-//     axes: IAxes;
-// }
+export interface PlayAxisUpdateData {
+    metadata: VisualMeasureMetadata;
+    viewport: IViewport;
+    visualSize: ISize;
+    visualMargin: IMargin;
+    axesSize: IAxesSize;
+    legendSize: IViewport;
+    legendPosition: LegendPosition;
+    xTickOffset: number;
+    yTickOffset: number;
+    dataPoints: VisualDataPoint[];
+    metadataColumn: DataViewMetadataColumn | undefined;
+    scatterGroupSelect: d3Selection<SVGGElement, VisualDataPoint[], SVGSVGElement, unknown> | null;
+    scatterSelect: Selection<SVGCircleElement, VisualDataPoint, BaseType, VisualDataPoint[]> | null;
+    updateType: VisualUpdateType;
+    axes: IAxes;
+}
 
 export interface AxesOptions {
     categoryAxisProperties: DataViewObject;

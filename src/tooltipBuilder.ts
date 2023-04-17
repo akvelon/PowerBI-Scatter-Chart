@@ -140,7 +140,7 @@ export function getFormattedValue(column: DataViewMetadataColumn, value: any): a
 
 export function bindTooltip(
     tooltipServiceWrapper: ITooltipServiceWrapper,
-    selection: Selection<BaseType, VisualDataPoint, BaseType, VisualDataPoint[]>): void {
+    selection: Selection<BaseType, VisualDataPoint, BaseType, unknown>): void {
     tooltipServiceWrapper.addTooltip<VisualDataPoint>(
         selection,
         (tooltipEvent) => tooltipEvent.tooltipInfo);
