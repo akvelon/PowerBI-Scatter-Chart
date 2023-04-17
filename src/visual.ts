@@ -97,8 +97,6 @@ import DataViewObject = powerbi.DataViewObject;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
 import IVisualSelectionId = powerbi.visuals.ISelectionId;
 import PrimitiveValue = powerbi.PrimitiveValue;
-import CustomVisualOpaqueIdentity = powerbi.visuals.CustomVisualOpaqueIdentity;
-import DataViewObjects = powerbi.DataViewObjects;
 import VisualUpdateType = powerbi.VisualUpdateType;
 import DataViewValueColumnGroup = powerbi.DataViewValueColumnGroup;
 import DataViewCategoryColumn = powerbi.DataViewCategoryColumn;
@@ -306,10 +304,8 @@ export class Visual implements IVisual {
 
             // Get metadata
             const grouped = dataView.categorical?.values?.grouped();
-            const source = dataView.metadata.columns[0];
 
             const categories = dataView.categorical?.categories || [];
-            const categoriesValues = categories[0].values;
             const metadata = getMetadata(categories, grouped);
             const dataViewCategorical = dataView.categorical;
             const dataViewMetadata = dataView.metadata;
@@ -326,9 +322,6 @@ export class Visual implements IVisual {
             const categoryIndex = typeof metadata.idx.category !== 'undefined' && metadata.idx.category > -1 ? metadata.idx.category : metadata.idx.playAxis ?? 0;
 
             let categoryValues: PrimitiveValue[] | [null];
-            let categoryObjects: DataViewObjects[] | undefined;
-            let categoryIdentities: CustomVisualOpaqueIdentity[] | undefined;
-            let categoryQueryName: string | undefined;
             let defaultDataPointColor: string = '';
             let showAllDataPoints: boolean = true;
             let categoryFormatter: IValueFormatter;
@@ -370,10 +363,6 @@ export class Visual implements IVisual {
                     value: categoryValues[0],
                     value2: categoryValues[categoryValues.length - 1],
                 });
-
-                categoryIdentities = mainCategory.identity;
-                categoryObjects = mainCategory.objects;
-                categoryQueryName = mainCategory.source.queryName;
             } else {
                 categoryValues = [null];
 
@@ -966,7 +955,7 @@ export class Visual implements IVisual {
 
                 // add additional fields to tooltip from field buckets
                 if (additionalTooltipValues && additionalTooltipValues.length > 0) {
-                    additionalTooltipValues.map((tooltipValue, i) => {
+                    additionalTooltipValues.map((tooltipValue) => {
                         const value = getValueFromDataViewValueColumnById(tooltipValue, categoryIdx);
                         seriesData.push({
                             value,

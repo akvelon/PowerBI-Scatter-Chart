@@ -11,7 +11,6 @@ import DataViewCategoryColumn = powerbi.DataViewCategoryColumn;
 import DataViewValueColumnGroup = powerbi.DataViewValueColumnGroup;
 import DataViewMetadataColumn = powerbi.DataViewMetadataColumn;
 import DataViewObject = powerbi.DataViewObject;
-import DataViewObjects = powerbi.DataViewObjects;
 import NumberRange = powerbi.NumberRange;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 import {ScaleLinear} from 'd3-scale';

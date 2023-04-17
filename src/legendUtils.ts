@@ -27,7 +27,6 @@ export const LegendLabelFontSizeDefault: number = 9;
 export const DefaultFontFamily: string = '"Segoe UI", wf_segoe-ui_normal, helvetica, arial, sans-serif';
 export const DefaultLegendTitleText: string = 'Type';
 export const DefaultLegendPosition: string = 'Top';
-const topOffset: number = 45;
 const DefaultSelectionStateOfTheDataPoint: boolean = false;
 
 export function buildLegendData(
@@ -141,7 +140,7 @@ export function renderLegend(
     if (legendItems && legendItems.length > 0) {
         let offset: number = 0;
 
-        legendItems.forEach((item, i, arr) => {
+        legendItems.forEach((item) => {
             item.style.fontFamily = DefaultFontFamily;
             const oldWidth = item.getBoundingClientRect().width;
             item.style.fontFamily = <string>legendObjectProperties.fontFamily || DefaultFontFamily;
