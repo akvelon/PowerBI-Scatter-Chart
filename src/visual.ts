@@ -202,529 +202,510 @@ export class Visual implements IVisual {
     private isSelectionRestored: boolean = false;
 
     constructor(options: VisualConstructorOptions) {
-        try {
-            console.log('=== CONSTRUCTOR START ===');
+        // Create d3 selection from main HTML element
+        this.mainElement = d3select(options.element);
 
-            // Create d3 selection from main HTML element
-            this.mainElement = d3select(options.element);
+        // Append SVG element to it. This SVG will contain our visual
+        this.mainSvgElement = this.mainElement
+            .append('svg')
+            .classed(Selectors.MainSvg.className, true);
 
-            // Append SVG element to it. This SVG will contain our visual
-            this.mainSvgElement = this.mainElement
-                .append('svg')
-                .classed(Selectors.MainSvg.className, true);
+        // Append SVG groups for X and Y axes.
+        this.xAxisSvgGroup = this.mainSvgElement
+            .append('g')
+            .classed(Selectors.XAxisSvgGroup.className, true);
+        this.yAxisSvgGroup = this.mainSvgElement
+            .append('g')
+            .classed(Selectors.YAxisSvgGroup.className, true);
 
-            // Append SVG groups for X and Y axes.
-            this.xAxisSvgGroup = this.mainSvgElement
-                .append('g')
-                .classed(Selectors.XAxisSvgGroup.className, true);
-            this.yAxisSvgGroup = this.mainSvgElement
-                .append('g')
-                .classed(Selectors.YAxisSvgGroup.className, true);
+        this.clearCatcher = appendClearCatcher(this.mainSvgElement);
 
-            this.clearCatcher = appendClearCatcher(this.mainSvgElement);
+        // Append an svg group that will contain our visual
+        this.visualSvgGroup = this.mainSvgElement
+            .append('g')
+            .classed(Selectors.VisualSvg.className, true);
 
-            // Append an svg group that will contain our visual
-            this.visualSvgGroup = this.mainSvgElement
-                .append('g')
-                .classed(Selectors.VisualSvg.className, true);
+        this.axisGraphicsContext = this.mainSvgElement
+            .append('g')
+            .classed(Selectors.AxisGraphicsContext.className, true);
 
-            this.axisGraphicsContext = this.mainSvgElement
-                .append('g')
-                .classed(Selectors.AxisGraphicsContext.className, true);
+        this.visualSvgGroupMarkers = this.visualSvgGroup
+            .append('svg');
 
-            this.visualSvgGroupMarkers = this.visualSvgGroup
-                .append('svg');
+        this.labelGraphicsContext = this.visualSvgGroupMarkers
+            .append('g')
+            .classed(Selectors.LabelGraphicsContext.className, true);
 
-            this.labelGraphicsContext = this.visualSvgGroupMarkers
-                .append('g')
-                .classed(Selectors.LabelGraphicsContext.className, true);
+        this.axisConstantLinesGroup = this.visualSvgGroup
+            .append('g')
+            .classed(Selectors.AxisConstantLinesGroup.className, true);
 
-            this.axisConstantLinesGroup = this.visualSvgGroup
-                .append('g')
-                .classed(Selectors.AxisConstantLinesGroup.className, true);
+        this.behavior = new VisualBehavior(this);
 
-            this.behavior = new VisualBehavior(this);
+        this.host = options.host;
 
-            this.host = options.host;
+        this.interactivityService = createInteractivitySelectionService(this.host);
 
-            this.interactivityService = createInteractivitySelectionService(this.host);
+        this.legend = createLegend(
+            options.element,
+            false,
+            this.interactivityService,
+            true,
+            LegendPosition.Top);
 
-            this.legend = createLegend(
-                options.element,
-                false,
-                this.interactivityService,
-                true,
-                LegendPosition.Top);
+        this.legendElement = this.mainElement.select<SVGSVGElement>('svg.legend');
 
-            this.legendElement = this.mainElement.select<SVGSVGElement>('svg.legend');
+        this.tooltipServiceWrapper = createTooltipServiceWrapper(
+            this.host.tooltipService,
+            options.element,
+        );
 
-            this.tooltipServiceWrapper = createTooltipServiceWrapper(
-                this.host.tooltipService,
-                options.element,
-            );
+        this.colorPalette = options.host.colorPalette;
 
-            this.colorPalette = options.host.colorPalette;
+        lassoSelectorInit(this.mainElement, this.behavior);
 
-            lassoSelectorInit(this.mainElement, this.behavior);
-
-            this.playAxis = new PlayAxis(options.element, this.mainSvgElement, this.tooltipServiceWrapper);
-
-            console.log('=== CONSTRUCTOR END ===');
-        } catch (e) {
-            console.error('=== CONSTRUCTOR ERROR ===');
-            console.error(e);
-            throw e;
-        }
+        this.playAxis = new PlayAxis(options.element, this.mainSvgElement, this.tooltipServiceWrapper);
     }
 
     // eslint-disable-next-line max-lines-per-function
     public update(options: VisualUpdateOptions) {
-        try {
-            console.log('=== UPDATE START ===');
+        if (Visual.skipNextUpdate) {
+            Visual.skipNextUpdate = false;
+            return;
+        }
 
-            if (Visual.skipNextUpdate) {
-                Visual.skipNextUpdate = false;
-                return;
-            }
+        const dataView = options && options.dataViews && options.dataViews[0];
 
-            const dataView = options && options.dataViews && options.dataViews[0];
+        if (!dataView) {
+            this.clearVisual(this.data?.size ?? options.viewport);
+            return;
+        }
 
-            if (!dataView) {
-                this.clearVisual(this.data?.size ?? options.viewport);
-                return;
-            }
+        this.dataView = dataView;
 
-            this.dataView = dataView;
+        // Parse settings
+        this.settings = VisualSettings.parse<VisualSettings>(dataView);
 
-            // Parse settings
-            this.settings = VisualSettings.parse<VisualSettings>(dataView);
+        // Get categories for legend
+        const categoryData = getCategories(dataView);
 
-            // Get categories for legend
-            const categoryData = getCategories(dataView);
+        // Get metadata
+        const grouped = dataView.categorical?.values?.grouped();
 
-            // Get metadata
-            const grouped = dataView.categorical?.values?.grouped();
+        const categories = dataView.categorical?.categories || [];
+        const metadata = getMetadata(categories, grouped);
+        const dataViewCategorical = dataView.categorical;
+        const dataViewMetadata = dataView.metadata;
+        const dataValues = dataViewCategorical?.values;
+        if (!dataValues) {
+            // Should not happen.
+            return;
+        }
 
-            const categories = dataView.categorical?.categories || [];
-            const metadata = getMetadata(categories, grouped);
-            const dataViewCategorical = dataView.categorical;
-            const dataViewMetadata = dataView.metadata;
-            const dataValues = dataViewCategorical?.values;
-            if (!dataValues) {
-                // Should not happen.
-                return;
-            }
+        const dataValueSource = dataValues.source;
+        const hasDynamicSeries = !!dataValueSource;
 
-            const dataValueSource = dataValues.source;
-            const hasDynamicSeries = !!dataValueSource;
+        // if no 'Details' field we use 'Play Axis' as the category
+        const categoryIndex = typeof metadata.idx.category !== 'undefined' && metadata.idx.category > -1 ? metadata.idx.category : metadata.idx.playAxis ?? 0;
 
-            // if no 'Details' field we use 'Play Axis' as the category
-            const categoryIndex = typeof metadata.idx.category !== 'undefined' && metadata.idx.category > -1 ? metadata.idx.category : metadata.idx.playAxis ?? 0;
+        let categoryValues: PrimitiveValue[] | [null];
+        let defaultDataPointColor: string = '';
+        let showAllDataPoints: boolean = true;
+        let categoryFormatter: IValueFormatter;
 
-            let categoryValues: PrimitiveValue[] | [null];
-            let defaultDataPointColor: string = '';
-            let showAllDataPoints: boolean = true;
-            let categoryFormatter: IValueFormatter;
+        this.categoryAxisProperties = getCategoryAxisProperties(dataViewMetadata, true);
+        this.valueAxisProperties = getValueAxisProperties(dataViewMetadata, true);
+        this.xAxisConstantLineProperties = getXConstantLineProperties(dataViewMetadata);
+        this.yAxisConstantLineProperties = getYConstantLineProperties(dataViewMetadata);
+        this.fillPoint = Visual.DefaultFillPoint;
+        this.shapesSize = getShapesSizeProperty(dataViewMetadata);
+        this.legendProperties = getLegendProperties(dataViewMetadata, true);
+        this.pointsTransparencyProperties = getPointsTransparencyProperties(dataViewMetadata);
+        this.selectionSaveSettings = getSelectionSaveSettings(dataViewMetadata);
+        this.selectionColorSettings = getSelectionColorSettings(dataViewMetadata);
 
-            this.categoryAxisProperties = getCategoryAxisProperties(dataViewMetadata, true);
-            this.valueAxisProperties = getValueAxisProperties(dataViewMetadata, true);
-            this.xAxisConstantLineProperties = getXConstantLineProperties(dataViewMetadata);
-            this.yAxisConstantLineProperties = getYConstantLineProperties(dataViewMetadata);
-            this.fillPoint = Visual.DefaultFillPoint;
-            this.shapesSize = getShapesSizeProperty(dataViewMetadata);
-            this.legendProperties = getLegendProperties(dataViewMetadata, true);
-            this.pointsTransparencyProperties = getPointsTransparencyProperties(dataViewMetadata);
-            this.selectionSaveSettings = getSelectionSaveSettings(dataViewMetadata);
-            this.selectionColorSettings = getSelectionColorSettings(dataViewMetadata);
+        const categoryAxisProperties = this.categoryAxisProperties;
+        const valueAxisProperties = this.valueAxisProperties;
+        const xAxisConstantLineProperties = this.xAxisConstantLineProperties;
+        const yAxisConstantLineProperties = this.yAxisConstantLineProperties;
 
-            const categoryAxisProperties = this.categoryAxisProperties;
-            const valueAxisProperties = this.valueAxisProperties;
-            const xAxisConstantLineProperties = this.xAxisConstantLineProperties;
-            const yAxisConstantLineProperties = this.yAxisConstantLineProperties;
+        // play axis - it affects the visual only if Play Axis bucket is filled
+        if (dataViewCategorical.categories && metadata.idx.playAxis !== undefined && dataViewCategorical.categories[metadata.idx.playAxis]) {
+            this.playAxis.enable();
+        } else {
+            this.playAxis.disable();
+        }
 
-            // play axis - it affects the visual only if Play Axis bucket is filled
-            if (dataViewCategorical.categories && metadata.idx.playAxis !== undefined && dataViewCategorical.categories[metadata.idx.playAxis]) {
-                this.playAxis.enable();
-            } else {
-                this.playAxis.disable();
-            }
+        if (dataViewCategorical &&
+            dataViewCategorical.categories
+            && dataViewCategorical.categories.length > 0
+            && dataViewCategorical.categories[categoryIndex]) {
 
-            if (dataViewCategorical &&
-                dataViewCategorical.categories
-                && dataViewCategorical.categories.length > 0
-                && dataViewCategorical.categories[categoryIndex]) {
+            const mainCategory = dataViewCategorical.categories[categoryIndex];
 
-                const mainCategory = dataViewCategorical.categories[categoryIndex];
+            categoryValues = mainCategory.values;
 
-                categoryValues = mainCategory.values;
+            categoryFormatter = valueFormatter.create({
+                format: valueFormatter.getFormatStringByColumn(<any>mainCategory.source),
+                value: categoryValues[0],
+                value2: categoryValues[categoryValues.length - 1],
+            });
+        } else {
+            categoryValues = [null];
 
-                categoryFormatter = valueFormatter.create({
-                    format: valueFormatter.getFormatStringByColumn(<any>mainCategory.source),
-                    value: categoryValues[0],
-                    value2: categoryValues[categoryValues.length - 1],
-                });
-            } else {
-                categoryValues = [null];
+            // creating default formatter for null value (to get the right string of empty value from the locale)
+            categoryFormatter = valueFormatter.createDefaultFormatter(<any>null);
+        }
 
-                // creating default formatter for null value (to get the right string of empty value from the locale)
-                categoryFormatter = valueFormatter.createDefaultFormatter(<any>null);
-            }
+        const dataLabelsSettings = dataLabelUtils.getDefaultPointLabelSettings() as VisualDataLabelsSettings;
 
-            const dataLabelsSettings = dataLabelUtils.getDefaultPointLabelSettings() as VisualDataLabelsSettings;
+        // set initial value to category and value axes
+        setCategoryAxisProperties(categoryAxisProperties, dataViewMetadata.objects);
+        setValueAxisProperties(valueAxisProperties, dataViewMetadata.objects);
+        setPointsTransparencyProperty(this.pointsTransparencyProperties, dataViewMetadata.objects);
+        setSelectionSaveProperty(this.selectionSaveSettings, dataViewMetadata.objects);
+        setSelectionColorProperty(this.selectionColorSettings, dataViewMetadata.objects);
 
-            // set initial value to category and value axes
-            setCategoryAxisProperties(categoryAxisProperties, dataViewMetadata.objects);
-            setValueAxisProperties(valueAxisProperties, dataViewMetadata.objects);
-            setPointsTransparencyProperty(this.pointsTransparencyProperties, dataViewMetadata.objects);
-            setSelectionSaveProperty(this.selectionSaveSettings, dataViewMetadata.objects);
-            setSelectionColorProperty(this.selectionColorSettings, dataViewMetadata.objects);
+        if (dataViewMetadata && dataViewMetadata.objects) {
+            const objects = dataViewMetadata.objects;
 
-            if (dataViewMetadata && dataViewMetadata.objects) {
-                const objects = dataViewMetadata.objects;
+            defaultDataPointColor = dataViewObjects.getFillColor(
+                objects,
+                PropertiesOfCapabilities['dataPoint']['defaultColor']);
 
-                defaultDataPointColor = dataViewObjects.getFillColor(
-                    objects,
-                    PropertiesOfCapabilities['dataPoint']['defaultColor']);
+            showAllDataPoints = dataViewObjects.getValue<boolean>(
+                objects,
+                PropertiesOfCapabilities['dataPoint']['showAllDataPoints']);
 
-                showAllDataPoints = dataViewObjects.getValue<boolean>(
-                    objects,
-                    PropertiesOfCapabilities['dataPoint']['showAllDataPoints']);
+            const labelsObj: DataViewObject = objects['categoryLabels'];
 
-                const labelsObj: DataViewObject = objects['categoryLabels'];
+            if (labelsObj) {
+                dataLabelsSettings.show = (labelsObj['show'] !== undefined)
+                    ? labelsObj['show'] as boolean
+                    : dataLabelsSettings.show;
 
-                if (labelsObj) {
-                    dataLabelsSettings.show = (labelsObj['show'] !== undefined)
-                        ? labelsObj['show'] as boolean
-                        : dataLabelsSettings.show;
+                dataLabelsSettings.fontSize = (labelsObj['fontSize'] !== undefined)
+                    ? labelsObj['fontSize'] as number
+                    : dataLabelsSettings.fontSize;
 
-                    dataLabelsSettings.fontSize = (labelsObj['fontSize'] !== undefined)
-                        ? labelsObj['fontSize'] as number
-                        : dataLabelsSettings.fontSize;
+                dataLabelsSettings.fontFamily = (labelsObj['fontFamily'] !== undefined)
+                    ? labelsObj['fontFamily'] as string
+                    : dataLabelsSettings.fontFamily;
 
-                    dataLabelsSettings.fontFamily = (labelsObj['fontFamily'] !== undefined)
-                        ? labelsObj['fontFamily'] as string
-                        : dataLabelsSettings.fontFamily;
-
-                    if (labelsObj['color'] !== undefined) {
-                        dataLabelsSettings.labelColor = dataViewObjects.getFillColor(
-                            objects,
-                            PropertiesOfCapabilities['categoryLabels']['color']);
-                    }
-
-                    if (labelsObj['showBackground'] !== undefined) {
-                        dataLabelsSettings.showBackground = dataViewObjects.getValue<boolean>(
-                            objects,
-                            PropertiesOfCapabilities['categoryLabels']['showBackground']);
-                    }
-
-                    if (labelsObj['backgroundColor'] !== undefined) {
-                        dataLabelsSettings.backgroundColor = dataViewObjects.getFillColor(
-                            objects,
-                            PropertiesOfCapabilities['categoryLabels']['backgroundColor']);
-                    } else {
-                        dataLabelsSettings.backgroundColor = Visual.DefaultLabelBackgroundColor;
-                    }
-
-                    dataLabelsSettings.transparency = (labelsObj['transparency'] !== undefined)
-                        ? labelsObj['transparency'] as number
-                        : Visual.DefaultLabelBackgroundColorTransparency;
+                if (labelsObj['color'] !== undefined) {
+                    dataLabelsSettings.labelColor = dataViewObjects.getFillColor(
+                        objects,
+                        PropertiesOfCapabilities['categoryLabels']['color']);
                 }
 
-                setXConstantLineProperties(xAxisConstantLineProperties, dataViewMetadata.objects);
-                setYConstantLineProperties(yAxisConstantLineProperties, dataViewMetadata.objects);
-
-                this.fillPoint = dataViewObjects.getValue<boolean>(
-                    objects,
-                    PropertiesOfCapabilities['fillPoint']['show'],
-                    Visual.DefaultFillPoint);
-
-                this.shapesSize.size = dataViewObjects.getValue(
-                    objects,
-                    PropertiesOfCapabilities['shapes']['size'],
-                    Visual.DefaulShapesSize);
-
-                setLegendProperties(this.legendProperties, dataViewMetadata.objects);
-            }
-
-            const viewport: IViewport = {
-                height: options.viewport.height - this.legend.getMargins().height,
-                width: options.viewport.width - this.legend.getMargins().width,
-            };
-
-            // viewport size is calculated wrong sometimes, which causing Play Axis bugs.
-            // We make it safe using max value between viewport and mainElement for height and width.
-            const mainElementHeight: number = (this.mainElement.node() as HTMLElement).clientHeight;
-            const mainElementWidth: number = (this.mainElement.node() as HTMLElement).clientWidth;
-            this.mainSvgElement
-                .attr('width', Math.max(mainElementWidth, viewport.width))
-                .attr('height', Math.max(mainElementHeight, viewport.height));
-
-            // Set up margins for our visual
-            const visualMargin: IMargin = {top: 8, bottom: 10, left: 10, right: 10};
-
-            // Set up sizes for axes
-            const axesSize: IAxesSize = {xAxisHeight: 15, yAxisWidth: 10};
-
-            // Build legend
-            const legendData = buildLegendData(dataValues, this.host, this.legendProperties, dataValueSource, categories, categoryIndex, hasDynamicSeries);
-            renderLegend(this.legend, this.mainSvgElement, options.viewport, legendData, this.legendProperties, this.legendElement);
-
-            // Calculate the resulting size of visual
-            const visualSize: ISize = {
-                width: options.viewport.width
-                    - visualMargin.left
-                    - visualMargin.right
-                    - axesSize.yAxisWidth
-                    - this.legend.getMargins().width,
-                height: options.viewport.height
-                    - visualMargin.top
-                    - visualMargin.bottom
-                    - axesSize.xAxisHeight
-                    - this.legend.getMargins().height
-                    - this.playAxis.getHeight(),
-            };
-
-            const playAxisCategory = categories && typeof metadata.idx.playAxis === 'number'
-                ? categories[metadata.idx.playAxis]
-                : null;
-
-            // Parse data from update options
-            let dataPoints: VisualDataPoint[];
-            if (options.type === VisualUpdateType.Resize || options.type === Visual.ResizeEndCode) {
-                dataPoints = this.data?.dataPoints ?? [];
-            } else {
-                dataPoints = this.transform(
-                    this.host,
-                    visualSize,
-                    dataView,
-                    grouped ?? [],
-                    categories,
-                    categoryValues,
-                    playAxisCategory,
-                    dataViewCategorical,
-                    dataViewMetadata,
-                    dataValues,
-                    categoryData,
-                    metadata,
-                    defaultDataPointColor,
-                    hasDynamicSeries,
-                    categoryFormatter,
-                    dataValueSource,
-                    dataLabelsSettings);
-            }
-
-            // Set width and height of visual to SVG group
-            this.visualSvgGroupMarkers
-                .attr('width', visualSize.width)
-                .attr('height', visualSize.height);
-
-            // Move SVG group elements to appropriate positions.
-            this.visualSvgGroup.attr(
-                'transform',
-                svgTranslate(
-                    visualMargin.left + axesSize.yAxisWidth,
-                    visualMargin.top));
-
-            this.xAxisSvgGroup.attr(
-                'transform',
-                svgTranslate(
-                    visualMargin.left + axesSize.yAxisWidth,
-                    visualMargin.top + visualSize.height));
-            this.yAxisSvgGroup.attr(
-                'transform',
-                svgTranslate(
-                    visualMargin.left + axesSize.yAxisWidth,
-                    visualMargin.top));
-
-            // Create linear scale for bubble size
-            const sizeScale = this.getBubbleSizeScale(dataPoints);
-
-            const sizeRange = getSizeRangeForGroups(
-                grouped,
-                metadata.idx.size);
-
-            if (categoryAxisProperties
-                && categoryAxisProperties['showAxisTitle'] !== null
-                && categoryAxisProperties['showAxisTitle'] === false) {
-                metadata.axesLabels.x = null;
-            }
-            if (valueAxisProperties
-                && valueAxisProperties['showAxisTitle'] !== null
-                && valueAxisProperties['showAxisTitle'] === false) {
-                metadata.axesLabels.y = null;
-            }
-
-            if (dataPoints && dataPoints[0]) {
-                const dataPoint: VisualDataPoint = dataPoints[0];
-
-                if (dataPoint.xStart != null) {
-                    categoryAxisProperties['start'] = dataPoint.xStart;
+                if (labelsObj['showBackground'] !== undefined) {
+                    dataLabelsSettings.showBackground = dataViewObjects.getValue<boolean>(
+                        objects,
+                        PropertiesOfCapabilities['categoryLabels']['showBackground']);
                 }
 
-                if (dataPoint.xEnd != null) {
-                    categoryAxisProperties['end'] = dataPoint.xEnd;
+                if (labelsObj['backgroundColor'] !== undefined) {
+                    dataLabelsSettings.backgroundColor = dataViewObjects.getFillColor(
+                        objects,
+                        PropertiesOfCapabilities['categoryLabels']['backgroundColor']);
+                } else {
+                    dataLabelsSettings.backgroundColor = Visual.DefaultLabelBackgroundColor;
                 }
 
-                if (dataPoint.yStart != null) {
-                    valueAxisProperties['start'] = dataPoint.yStart;
-                }
-
-                if (dataPoint.yEnd != null) {
-                    valueAxisProperties['end'] = dataPoint.yEnd;
-                }
+                dataLabelsSettings.transparency = (labelsObj['transparency'] !== undefined)
+                    ? labelsObj['transparency'] as number
+                    : Visual.DefaultLabelBackgroundColorTransparency;
             }
 
-            const axesOptions: AxesOptions = {
-                categoryAxisProperties,
-                valueAxisProperties,
-                xAxisConstantLine: xAxisConstantLineProperties,
-                yAxisConstantLine: yAxisConstantLineProperties,
-            };
+            setXConstantLineProperties(xAxisConstantLineProperties, dataViewMetadata.objects);
+            setYConstantLineProperties(yAxisConstantLineProperties, dataViewMetadata.objects);
 
-            const axes = this.createD3Axes(visualSize, dataPoints, metadata.cols, axesOptions);
+            this.fillPoint = dataViewObjects.getValue<boolean>(
+                objects,
+                PropertiesOfCapabilities['fillPoint']['show'],
+                Visual.DefaultFillPoint);
 
-            this.yAxisIsCategorical = axes.y.isCategoryAxis;
+            this.shapesSize.size = dataViewObjects.getValue(
+                objects,
+                PropertiesOfCapabilities['shapes']['size'],
+                Visual.DefaulShapesSize);
 
-            this.addUnitTypeToAxisLabel(axes.x, axes.y);
-            dataPoints = setDatapointVisibleAngleRange(dataPoints, axes, visualSize, sizeScale, <any>this.shapesSize);
+            setLegendProperties(this.legendProperties, dataViewMetadata.objects);
+        }
 
-            if (this.interactivityService) {
-                this.interactivityService.applySelectionStateToData(dataPoints);
-            }
+        const viewport: IViewport = {
+            height: options.viewport.height - this.legend.getMargins().height,
+            width: options.viewport.width - this.legend.getMargins().width,
+        };
 
-            // Change rectangular selection color
-            d3selectAll(Selectors.SelectionRectangle.selectorName)
-                .style('background-color', <string>this.selectionColorSettings.fillColor);
+        // viewport size is calculated wrong sometimes, which causing Play Axis bugs.
+        // We make it safe using max value between viewport and mainElement for height and width.
+        const mainElementHeight: number = (this.mainElement.node() as HTMLElement).clientHeight;
+        const mainElementWidth: number = (this.mainElement.node() as HTMLElement).clientWidth;
+        this.mainSvgElement
+            .attr('width', Math.max(mainElementWidth, viewport.width))
+            .attr('height', Math.max(mainElementHeight, viewport.height));
 
-            // Render visual
-            const data: VisualData = {
-                axes,
-                sizeRange,
-                dataPoints: dataPoints,
-                size: visualSize,
-                defaultColor: this.settings.dataPoint.defaultColor,
-                sizeScale,
-                legendData: legendData,
+        // Set up margins for our visual
+        const visualMargin: IMargin = {top: 8, bottom: 10, left: 10, right: 10};
+
+        // Set up sizes for axes
+        const axesSize: IAxesSize = {xAxisHeight: 15, yAxisWidth: 10};
+
+        // Build legend
+        const legendData = buildLegendData(dataValues, this.host, this.legendProperties, dataValueSource, categories, categoryIndex, hasDynamicSeries);
+        renderLegend(this.legend, this.mainSvgElement, options.viewport, legendData, this.legendProperties, this.legendElement);
+
+        // Calculate the resulting size of visual
+        const visualSize: ISize = {
+            width: options.viewport.width
+                - visualMargin.left
+                - visualMargin.right
+                - axesSize.yAxisWidth
+                - this.legend.getMargins().width,
+            height: options.viewport.height
+                - visualMargin.top
+                - visualMargin.bottom
+                - axesSize.xAxisHeight
+                - this.legend.getMargins().height
+                - this.playAxis.getHeight(),
+        };
+
+        const playAxisCategory = categories && typeof metadata.idx.playAxis === 'number'
+            ? categories[metadata.idx.playAxis]
+            : null;
+
+        // Parse data from update options
+        let dataPoints: VisualDataPoint[];
+        if (options.type === VisualUpdateType.Resize || options.type === Visual.ResizeEndCode) {
+            dataPoints = this.data?.dataPoints ?? [];
+        } else {
+            dataPoints = this.transform(
+                this.host,
+                visualSize,
+                dataView,
+                grouped ?? [],
+                categories,
+                categoryValues,
+                playAxisCategory,
+                dataViewCategorical,
+                dataViewMetadata,
+                dataValues,
+                categoryData,
+                metadata,
                 defaultDataPointColor,
-                showAllDataPoints,
                 hasDynamicSeries,
-                xCol: metadata.cols.x,
-                yCol: metadata.cols.y,
-                dataLabelsSettings,
+                categoryFormatter,
+                dataValueSource,
+                dataLabelsSettings);
+        }
+
+        // Set width and height of visual to SVG group
+        this.visualSvgGroupMarkers
+            .attr('width', visualSize.width)
+            .attr('height', visualSize.height);
+
+        // Move SVG group elements to appropriate positions.
+        this.visualSvgGroup.attr(
+            'transform',
+            svgTranslate(
+                visualMargin.left + axesSize.yAxisWidth,
+                visualMargin.top));
+
+        this.xAxisSvgGroup.attr(
+            'transform',
+            svgTranslate(
+                visualMargin.left + axesSize.yAxisWidth,
+                visualMargin.top + visualSize.height));
+        this.yAxisSvgGroup.attr(
+            'transform',
+            svgTranslate(
+                visualMargin.left + axesSize.yAxisWidth,
+                visualMargin.top));
+
+        // Create linear scale for bubble size
+        const sizeScale = this.getBubbleSizeScale(dataPoints);
+
+        const sizeRange = getSizeRangeForGroups(
+            grouped,
+            metadata.idx.size);
+
+        if (categoryAxisProperties
+            && categoryAxisProperties['showAxisTitle'] !== null
+            && categoryAxisProperties['showAxisTitle'] === false) {
+            metadata.axesLabels.x = null;
+        }
+        if (valueAxisProperties
+            && valueAxisProperties['showAxisTitle'] !== null
+            && valueAxisProperties['showAxisTitle'] === false) {
+            metadata.axesLabels.y = null;
+        }
+
+        if (dataPoints && dataPoints[0]) {
+            const dataPoint: VisualDataPoint = dataPoints[0];
+
+            if (dataPoint.xStart != null) {
+                categoryAxisProperties['start'] = dataPoint.xStart;
+            }
+
+            if (dataPoint.xEnd != null) {
+                categoryAxisProperties['end'] = dataPoint.xEnd;
+            }
+
+            if (dataPoint.yStart != null) {
+                valueAxisProperties['start'] = dataPoint.yStart;
+            }
+
+            if (dataPoint.yEnd != null) {
+                valueAxisProperties['end'] = dataPoint.yEnd;
+            }
+        }
+
+        const axesOptions: AxesOptions = {
+            categoryAxisProperties,
+            valueAxisProperties,
+            xAxisConstantLine: xAxisConstantLineProperties,
+            yAxisConstantLine: yAxisConstantLineProperties,
+        };
+
+        const axes = this.createD3Axes(visualSize, dataPoints, metadata.cols, axesOptions);
+
+        this.yAxisIsCategorical = axes.y.isCategoryAxis;
+
+        this.addUnitTypeToAxisLabel(axes.x, axes.y);
+        dataPoints = setDatapointVisibleAngleRange(dataPoints, axes, visualSize, sizeScale, <any>this.shapesSize);
+
+        if (this.interactivityService) {
+            this.interactivityService.applySelectionStateToData(dataPoints);
+        }
+
+        // Change rectangular selection color
+        d3selectAll(Selectors.SelectionRectangle.selectorName)
+            .style('background-color', <string>this.selectionColorSettings.fillColor);
+
+        // Render visual
+        const data: VisualData = {
+            axes,
+            sizeRange,
+            dataPoints: dataPoints,
+            size: visualSize,
+            defaultColor: this.settings.dataPoint.defaultColor,
+            sizeScale,
+            legendData: legendData,
+            defaultDataPointColor,
+            showAllDataPoints,
+            hasDynamicSeries,
+            xCol: metadata.cols.x,
+            yCol: metadata.cols.y,
+            dataLabelsSettings,
+        };
+
+        this.data = data;
+        this.renderAxes(data);
+
+        const ytickText = this.yAxisSvgGroup.selectAll('text').nodes();
+        const xtickText = this.xAxisSvgGroup.selectAll('text').nodes();
+
+        const yTickWidth: Array<number> = [];
+        const xTickHeight: Array<number> = [];
+
+        ytickText.forEach((item: any) => {
+            const dimension = item.getBoundingClientRect();
+            yTickWidth.push(dimension.width);
+        });
+
+        xtickText.forEach((item: any) => {
+            const dimension = item.getBoundingClientRect();
+            xTickHeight.push(dimension.height);
+        });
+
+        if (yTickWidth.length === 0) {
+            yTickWidth.push(0);
+        }
+
+        if (xTickHeight.length === 0) {
+            xTickHeight.push(0);
+        }
+
+        const yTickOffset = (d3max(yTickWidth) ?? 0) + (valueAxisProperties.showAxisTitle ? parseInt(valueAxisProperties.titleFontSize.toString()) : 0);
+        const xTickOffset = (d3max(xTickHeight) ?? 0) + (categoryAxisProperties.showAxisTitle ? parseInt(categoryAxisProperties.titleFontSize.toString()) : 0);
+
+        // Calculate the resulting size of visual
+        visualSize.width = visualSize.width - yTickOffset;
+        visualSize.height = visualSize.height - xTickOffset;
+
+        const axesUpdated = this.createD3Axes(visualSize, dataPoints, metadata.cols, axesOptions);
+        this.data.size = visualSize;
+        this.data.axes = axesUpdated;
+
+        const legendXOffset = this.legend.getOrientation() === LegendPosition.Right
+        || this.legend.getOrientation() === LegendPosition.RightCenter
+            ? 0
+            : this.legend.getMargins().width;
+        const legendYOffset = this.legend.getOrientation() === LegendPosition.Bottom
+        || this.legend.getOrientation() === LegendPosition.BottomCenter
+            ? 0
+            : this.legend.getMargins().height;
+
+        this.data.axesDimensions = {
+            x: visualMargin.left + axesSize.yAxisWidth + yTickOffset + legendXOffset,
+            y: visualMargin.top + legendYOffset,
+            width: visualSize.width,
+            height: visualSize.height,
+        };
+
+        // Set width and height of visual to SVG group
+        this.visualSvgGroupMarkers
+            .attr('width', visualSize.width)
+            .attr('height', visualSize.height);
+
+        // Move SVG group elements to appropriate positions.
+        this.visualSvgGroup.attr(
+            'transform',
+            svgTranslate(
+                visualMargin.left + axesSize.yAxisWidth + yTickOffset,
+                visualMargin.top));
+
+        this.xAxisSvgGroup.attr(
+            'transform',
+            svgTranslate(
+                visualMargin.left + axesSize.yAxisWidth + yTickOffset,
+                visualMargin.top + visualSize.height));
+        this.yAxisSvgGroup.attr(
+            'transform',
+            svgTranslate(
+                visualMargin.left + axesSize.yAxisWidth + yTickOffset,
+                visualMargin.top));
+
+        this.renderAxes(this.data);
+        this.renderVisual(this.data);
+        this.renderAxesLabels(
+            metadata.axesLabels,
+            this.legend.getMargins().height + xTickOffset,
+            options.viewport,
+            visualMargin);
+        this.renderAxesConstantLines(this.data);
+
+        // Play Axis
+        if (this.playAxis.isEnabled()) {
+            const playAxisUpdateData: PlayAxisUpdateData = {
+                metadata,
+                viewport: options.viewport,
+                visualSize,
+                visualMargin,
+                axesSize,
+                legendSize: this.legend.getMargins(),
+                legendPosition: this.legend.getOrientation(),
+                xTickOffset,
+                yTickOffset,
+                dataPoints,
+                metadataColumn: playAxisCategory?.source,
+                scatterGroupSelect: this.scatterGroupSelect,
+                scatterSelect: this.scatterSelect,
+                updateType: options.type,
+                axes: this.data.axes,
             };
-
-            this.data = data;
-            this.renderAxes(data);
-
-            const ytickText = this.yAxisSvgGroup.selectAll('text').nodes();
-            const xtickText = this.xAxisSvgGroup.selectAll('text').nodes();
-
-            const yTickWidth: Array<number> = [];
-            const xTickHeight: Array<number> = [];
-
-            ytickText.forEach((item: any) => {
-                const dimension = item.getBoundingClientRect();
-                yTickWidth.push(dimension.width);
-            });
-
-            xtickText.forEach((item: any) => {
-                const dimension = item.getBoundingClientRect();
-                xTickHeight.push(dimension.height);
-            });
-
-            if (yTickWidth.length === 0) {
-                yTickWidth.push(0);
-            }
-
-            if (xTickHeight.length === 0) {
-                xTickHeight.push(0);
-            }
-
-            const yTickOffset = (d3max(yTickWidth) ?? 0) + (valueAxisProperties.showAxisTitle ? parseInt(valueAxisProperties.titleFontSize.toString()) : 0);
-            const xTickOffset = (d3max(xTickHeight) ?? 0) + (categoryAxisProperties.showAxisTitle ? parseInt(categoryAxisProperties.titleFontSize.toString()) : 0);
-
-            // Calculate the resulting size of visual
-            visualSize.width = visualSize.width - yTickOffset;
-            visualSize.height = visualSize.height - xTickOffset;
-
-            const axesUpdated = this.createD3Axes(visualSize, dataPoints, metadata.cols, axesOptions);
-            this.data.size = visualSize;
-            this.data.axes = axesUpdated;
-
-            const legendXOffset = this.legend.getOrientation() === LegendPosition.Right
-            || this.legend.getOrientation() === LegendPosition.RightCenter
-                ? 0
-                : this.legend.getMargins().width;
-            const legendYOffset = this.legend.getOrientation() === LegendPosition.Bottom
-            || this.legend.getOrientation() === LegendPosition.BottomCenter
-                ? 0
-                : this.legend.getMargins().height;
-
-            this.data.axesDimensions = {
-                x: visualMargin.left + axesSize.yAxisWidth + yTickOffset + legendXOffset,
-                y: visualMargin.top + legendYOffset,
-                width: visualSize.width,
-                height: visualSize.height,
-            };
-
-            // Set width and height of visual to SVG group
-            this.visualSvgGroupMarkers
-                .attr('width', visualSize.width)
-                .attr('height', visualSize.height);
-
-            // Move SVG group elements to appropriate positions.
-            this.visualSvgGroup.attr(
-                'transform',
-                svgTranslate(
-                    visualMargin.left + axesSize.yAxisWidth + yTickOffset,
-                    visualMargin.top));
-
-            this.xAxisSvgGroup.attr(
-                'transform',
-                svgTranslate(
-                    visualMargin.left + axesSize.yAxisWidth + yTickOffset,
-                    visualMargin.top + visualSize.height));
-            this.yAxisSvgGroup.attr(
-                'transform',
-                svgTranslate(
-                    visualMargin.left + axesSize.yAxisWidth + yTickOffset,
-                    visualMargin.top));
-
-            this.renderAxes(this.data);
-            this.renderVisual(this.data);
-            this.renderAxesLabels(
-                metadata.axesLabels,
-                this.legend.getMargins().height + xTickOffset,
-                options.viewport,
-                visualMargin);
-            this.renderAxesConstantLines(this.data);
-
-            // Play Axis
-            if (this.playAxis.isEnabled()) {
-                const playAxisUpdateData: PlayAxisUpdateData = {
-                    metadata,
-                    viewport: options.viewport,
-                    visualSize,
-                    visualMargin,
-                    axesSize,
-                    legendSize: this.legend.getMargins(),
-                    legendPosition: this.legend.getOrientation(),
-                    xTickOffset,
-                    yTickOffset,
-                    dataPoints,
-                    metadataColumn: playAxisCategory?.source,
-                    scatterGroupSelect: this.scatterGroupSelect,
-                    scatterSelect: this.scatterSelect,
-                    updateType: options.type,
-                    axes: this.data.axes,
-                };
-                this.playAxis.update(playAxisUpdateData);
-            }
-            console.log('=== UPDATE END ===');
-        } catch (e) {
-            console.error('=== UPDATE ERROR ===');
-            console.error(e);
-            throw e;
+            this.playAxis.update(playAxisUpdateData);
         }
     }
 
@@ -1909,223 +1890,212 @@ export class Visual implements IVisual {
      * */
     // eslint-disable-next-line max-lines-per-function
     public enumerateObjectInstances(options: EnumerateVisualObjectInstancesOptions): VisualObjectInstanceEnumeration {
-        try {
-            console.log('=== enumerateObjectInstances START ===');
-            console.log(options);
+        const instances: VisualObjectInstance[] = [];
 
-            const instances: VisualObjectInstance[] = [];
+        switch (options.objectName) {
+            case 'legend': {
+                this.getLegendValues(instances);
+                break;
+            }
+            case 'dataPoint': {
+                const categoricalDataView = this.dataView && this.dataView.categorical
+                    ? this.dataView.categorical
+                    : null;
 
-            switch (options.objectName) {
-                case 'legend': {
-                    this.getLegendValues(instances);
-                    break;
-                }
-                case 'dataPoint': {
-                    const categoricalDataView = this.dataView && this.dataView.categorical
-                        ? this.dataView.categorical
-                        : null;
-
-                    if (!hasGradientRole(categoricalDataView)) {
-                        this.enumerateDataPoints(instances);
-                    }
-
-                    break;
-                }
-                case 'categoryAxis': {
-                    this.getCategoryAxisValues(instances);
-                    break;
+                if (!hasGradientRole(categoricalDataView)) {
+                    this.enumerateDataPoints(instances);
                 }
 
-                case 'valueAxis': {
-                    this.getValueAxisValues(instances);
-                    break;
-                }
-                case 'fillPoint': {
-                    instances.push({
-                        objectName: 'fillPoint',
-                        selector: <any>null,
-                        properties: {
-                            show: this.fillPoint ?? false,
-                        },
-                    });
-                    break;
-                }
-                case 'shapes': {
-                    instances.push({
-                        objectName: 'shapes',
-                        selector: <any>null,
-                        properties: {
-                            size: <any>this.shapesSize?.size,
-                        },
-                        validValues: {
-                            size: {
-                                numberRange: {
-                                    min: 0,
-                                    max: 100,
-                                },
+                break;
+            }
+            case 'categoryAxis': {
+                this.getCategoryAxisValues(instances);
+                break;
+            }
+
+            case 'valueAxis': {
+                this.getValueAxisValues(instances);
+                break;
+            }
+            case 'fillPoint': {
+                instances.push({
+                    objectName: 'fillPoint',
+                    selector: <any>null,
+                    properties: {
+                        show: this.fillPoint ?? false,
+                    },
+                });
+                break;
+            }
+            case 'shapes': {
+                instances.push({
+                    objectName: 'shapes',
+                    selector: <any>null,
+                    properties: {
+                        size: <any>this.shapesSize?.size,
+                    },
+                    validValues: {
+                        size: {
+                            numberRange: {
+                                min: 0,
+                                max: 100,
                             },
                         },
-                    });
-                    break;
-                }
+                    },
+                });
+                break;
+            }
 
-                case 'selectionColor': {
-                    const instance: VisualObjectInstance = {
-                        objectName: 'selectionColor',
-                        selector: <any>null,
-                        properties: {
-                            fillColor: this.selectionColorSettings && this.selectionColorSettings.fillColor ?
-                                this.selectionColorSettings.fillColor :
-                                Visual.DefaultColor,
-                        },
-                    };
+            case 'selectionColor': {
+                const instance: VisualObjectInstance = {
+                    objectName: 'selectionColor',
+                    selector: <any>null,
+                    properties: {
+                        fillColor: this.selectionColorSettings && this.selectionColorSettings.fillColor ?
+                            this.selectionColorSettings.fillColor :
+                            Visual.DefaultColor,
+                    },
+                };
 
-                    instances.push(instance);
-                    break;
-                }
+                instances.push(instance);
+                break;
+            }
 
-                case 'pointsTransparency': {
-                    instances.push({
-                        objectName: 'pointsTransparency',
-                        selector: <any>null,
-                        properties: {
-                            selected: <any>this.pointsTransparencyProperties?.selected,
-                            regular: <any>this.pointsTransparencyProperties?.regular,
-                            unselected: <any>this.pointsTransparencyProperties?.unselected,
-                        },
-                        validValues: {
-                            selected: {
-                                numberRange: {
-                                    min: 0,
-                                    max: 100,
-                                },
-                            },
-                            regular: {
-                                numberRange: {
-                                    min: 0,
-                                    max: 100,
-                                },
-                            },
-                            unselected: {
-                                numberRange: {
-                                    min: 0,
-                                    max: 100,
-                                },
+            case 'pointsTransparency': {
+                instances.push({
+                    objectName: 'pointsTransparency',
+                    selector: <any>null,
+                    properties: {
+                        selected: <any>this.pointsTransparencyProperties?.selected,
+                        regular: <any>this.pointsTransparencyProperties?.regular,
+                        unselected: <any>this.pointsTransparencyProperties?.unselected,
+                    },
+                    validValues: {
+                        selected: {
+                            numberRange: {
+                                min: 0,
+                                max: 100,
                             },
                         },
-                    });
+                        regular: {
+                            numberRange: {
+                                min: 0,
+                                max: 100,
+                            },
+                        },
+                        unselected: {
+                            numberRange: {
+                                min: 0,
+                                max: 100,
+                            },
+                        },
+                    },
+                });
 
-                    break;
-                }
+                break;
+            }
 
-                case 'xConstantLine': {
-                    this.getValueAxisValues(instances);
+            case 'xConstantLine': {
+                this.getValueAxisValues(instances);
+
+                instances.push({
+                    objectName: 'xConstantLine',
+                    selector: <any>null,
+                    properties: {
+                        show: this.xAxisConstantLineProperties && this.xAxisConstantLineProperties.show ?
+                            this.xAxisConstantLineProperties.show :
+                            Visual.DefaultConstantLineShow,
+                        value: this.xAxisConstantLineProperties && this.xAxisConstantLineProperties.value ?
+                            this.xAxisConstantLineProperties.value :
+                            Visual.DefaultConstantLineValue,
+                        color: this.xAxisConstantLineProperties && this.xAxisConstantLineProperties.color ?
+                            this.xAxisConstantLineProperties.color :
+                            Visual.DefaultColor,
+                    },
+                });
+                break;
+            }
+            case 'yConstantLine': {
+                this.getValueAxisValues(instances);
+
+                instances.push({
+                    objectName: 'yConstantLine',
+                    selector: <any>null,
+                    properties: {
+                        show: this.yAxisConstantLineProperties && this.yAxisConstantLineProperties.show ?
+                            this.yAxisConstantLineProperties.show :
+                            Visual.DefaultConstantLineShow,
+                        value: this.yAxisConstantLineProperties && this.yAxisConstantLineProperties.value ?
+                            this.yAxisConstantLineProperties.value :
+                            Visual.DefaultConstantLineValue,
+                        color: this.yAxisConstantLineProperties && this.yAxisConstantLineProperties.color ?
+                            this.yAxisConstantLineProperties.color :
+                            Visual.DefaultColor,
+                    },
+                });
+                break;
+            }
+
+            case 'categoryLabels': {
+                const instanceEnumerationObject: VisualObjectInstanceEnumerationObject = {
+                    instances,
+                };
+
+                if (this.data) {
+                    dataLabelUtils.enumerateCategoryLabels(
+                        <any>instanceEnumerationObject,
+                        this.data.dataLabelsSettings,
+                        true);
 
                     instances.push({
-                        objectName: 'xConstantLine',
+                        objectName: 'categoryLabels',
                         selector: <any>null,
                         properties: {
-                            show: this.xAxisConstantLineProperties && this.xAxisConstantLineProperties.show ?
-                                this.xAxisConstantLineProperties.show :
-                                Visual.DefaultConstantLineShow,
-                            value: this.xAxisConstantLineProperties && this.xAxisConstantLineProperties.value ?
-                                this.xAxisConstantLineProperties.value :
-                                Visual.DefaultConstantLineValue,
-                            color: this.xAxisConstantLineProperties && this.xAxisConstantLineProperties.color ?
-                                this.xAxisConstantLineProperties.color :
-                                Visual.DefaultColor,
+                            fontFamily: this.data.dataLabelsSettings && this.data.dataLabelsSettings.fontFamily ?
+                                this.data.dataLabelsSettings.fontFamily :
+                                Visual.DefaultFontFamily,
+                            showBackground: this.data.dataLabelsSettings && this.data.dataLabelsSettings.showBackground ?
+                                this.data.dataLabelsSettings.showBackground :
+                                Visual.DefaultLabelShowBackground,
                         },
                     });
-                    break;
-                }
-                case 'yConstantLine': {
-                    this.getValueAxisValues(instances);
 
-                    instances.push({
-                        objectName: 'yConstantLine',
-                        selector: <any>null,
-                        properties: {
-                            show: this.yAxisConstantLineProperties && this.yAxisConstantLineProperties.show ?
-                                this.yAxisConstantLineProperties.show :
-                                Visual.DefaultConstantLineShow,
-                            value: this.yAxisConstantLineProperties && this.yAxisConstantLineProperties.value ?
-                                this.yAxisConstantLineProperties.value :
-                                Visual.DefaultConstantLineValue,
-                            color: this.yAxisConstantLineProperties && this.yAxisConstantLineProperties.color ?
-                                this.yAxisConstantLineProperties.color :
-                                Visual.DefaultColor,
-                        },
-                    });
-                    break;
-                }
 
-                case 'categoryLabels': {
-                    const instanceEnumerationObject: VisualObjectInstanceEnumerationObject = {
-                        instances,
-                    };
-
-                    if (this.data) {
-                        dataLabelUtils.enumerateCategoryLabels(
-                            <any>instanceEnumerationObject,
-                            this.data.dataLabelsSettings,
-                            true);
-
+                    if (this.data.dataLabelsSettings && this.data.dataLabelsSettings.showBackground) {
                         instances.push({
                             objectName: 'categoryLabels',
                             selector: <any>null,
                             properties: {
-                                fontFamily: this.data.dataLabelsSettings && this.data.dataLabelsSettings.fontFamily ?
-                                    this.data.dataLabelsSettings.fontFamily :
-                                    Visual.DefaultFontFamily,
-                                showBackground: this.data.dataLabelsSettings && this.data.dataLabelsSettings.showBackground ?
-                                    this.data.dataLabelsSettings.showBackground :
-                                    Visual.DefaultLabelShowBackground,
+                                backgroundColor: this.data.dataLabelsSettings.backgroundColor ?
+                                    this.data.dataLabelsSettings.backgroundColor
+                                    : Visual.DefaultLabelBackgroundColor,
+                                transparency: this.data.dataLabelsSettings.transparency !== undefined && this.data.dataLabelsSettings.transparency !== null ?
+                                    this.data.dataLabelsSettings.transparency
+                                    : Visual.DefaultLabelBackgroundColorTransparency,
                             },
-                        });
-
-
-                        if (this.data.dataLabelsSettings && this.data.dataLabelsSettings.showBackground) {
-                            instances.push({
-                                objectName: 'categoryLabels',
-                                selector: <any>null,
-                                properties: {
-                                    backgroundColor: this.data.dataLabelsSettings.backgroundColor ?
-                                        this.data.dataLabelsSettings.backgroundColor
-                                        : Visual.DefaultLabelBackgroundColor,
-                                    transparency: this.data.dataLabelsSettings.transparency !== undefined && this.data.dataLabelsSettings.transparency !== null ?
-                                        this.data.dataLabelsSettings.transparency
-                                        : Visual.DefaultLabelBackgroundColorTransparency,
-                                },
-                                validValues: {
-                                    transparency: {
-                                        numberRange: {
-                                            min: 0,
-                                            max: 100,
-                                        },
+                            validValues: {
+                                transparency: {
+                                    numberRange: {
+                                        min: 0,
+                                        max: 100,
                                     },
                                 },
-                            });
-                        }
-
-                    } else {
-                        dataLabelUtils.enumerateCategoryLabels(
-                            <any>instanceEnumerationObject,
-                            <any>null,
-                            true);
+                            },
+                        });
                     }
 
-                    break;
+                } else {
+                    dataLabelUtils.enumerateCategoryLabels(
+                        <any>instanceEnumerationObject,
+                        <any>null,
+                        true);
                 }
+
+                break;
             }
-
-            console.log('=== enumerateObjectInstances END ===');
-
-            return instances;
-        } catch (e) {
-            console.error('=== enumerateObjectInstances ERROR ===');
-            console.error(e);
-            throw e;
         }
+
+        return instances;
     }
 
     private enumerateDataPoints(instances: VisualObjectInstance[]): void {

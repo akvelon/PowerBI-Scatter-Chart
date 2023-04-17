@@ -30,11 +30,11 @@ export interface VisualData {
     size: ISize;
     axes: IAxes;
     defaultColor: string;
-    sizeScale: ScaleLinear<number, number, never>;
+    sizeScale: ScaleLinear<number, number>;
     legendData: LegendData;
     defaultDataPointColor?: string;
-    xCol: DataViewMetadataColumn | undefined; // no undefined
-    yCol: DataViewMetadataColumn | undefined; // no undefined
+    xCol: DataViewMetadataColumn | undefined;
+    yCol: DataViewMetadataColumn | undefined;
     showAllDataPoints?: boolean;
     hasDynamicSeries?: boolean;
     dataLabelsSettings: VisualDataLabelsSettings;
@@ -59,15 +59,6 @@ export interface IAxes {
     y: IAxisProperties;
 }
 
-// export interface VisualChartData {
-//     category: PrimitiveValue;
-//     dataPoints: VisualDataPoint[];
-//     axesLabels: VisualAxesLabels;
-//     xCol: DataViewMetadataColumn;
-//     yCol: DataViewMetadataColumn;
-// }
-
-
 export interface VisualRadiusData {
     sizeMeasure: DataViewValueColumn | null; // no null
     index: number;
@@ -80,30 +71,6 @@ export interface VisualDataLabelsSettings extends PointDataLabelsSettings {
     backgroundColor?: string;
     transparency?: number;
 }
-
-// export interface VisualAxesSettings {
-//     categoryAxis: VisualAxisSettings;
-//     valueAxis: VisualAxisSettings;
-// }
-//
-// export interface VisualAxisSettings {
-//     scaleType: string;
-//     start: number;
-//     end: number;
-//     axisColor: string;
-//     fontSize: number;
-//     fontFamily: string;
-//     displayUnits?: any;
-//     valueDecimalPlaces?: number;
-//     title: string;
-//     style?: string;
-//     titleColor?: any;
-//     axisTitle?: any;
-//     showGridlines?: boolean;
-//     gridlinesColor?: string;
-//     strokeWidth?: number;
-//     gridlinesLineStyle?: string;
-// }
 
 export interface VisualDataPoint extends SelectableDataPoint, TooltipEnabledDataPoint {
     x: number | null;
@@ -140,20 +107,14 @@ export interface VisualLabelsCount {
     count: number;
 }
 
-// export interface VisualPointsTransparency {
-//     selected: number;
-//     regular: number;
-//     unselected: number;
-// }
-
 export interface VisualLabelsDelta {
     dx: number;
     dy: number;
 }
 
 export interface VisualAxesLabels {
-    x: string | null; // no null
-    y: string | null; // no null
+    x: string | null;
+    y: string | null;
 }
 
 export interface VisualMeasureMetadataColumns {
@@ -195,10 +156,6 @@ export interface ICategory {
     selectionColumn: DataViewCategoryColumn;
     columnGroup: DataViewValueColumnGroup;
 }
-
-// export interface SelectionSaveSettings {
-//     selection: string;
-// }
 
 export interface VisualDataViewObject extends DataViewObject {
     selection: VisualDataPoint[];
