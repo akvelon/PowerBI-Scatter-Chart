@@ -307,8 +307,6 @@ export class PlayAxis {
         $.easing._default = 'linear' as any;
 
         this.sliderEl = document.createElement('div');
-        // this.sliderEl.style.display = 'none';
-
         this.$sliderEl = $(this.sliderEl);
 
         // Hide slider element by setting style.display attribute to 'none'
