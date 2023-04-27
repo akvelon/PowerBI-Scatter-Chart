@@ -5,3 +5,7 @@ node_modules
 dist
 .api
 .vscode
+package-lock.json
+.idea/
+dist/
+/webpack.statistics.html
