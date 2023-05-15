@@ -74,6 +74,17 @@ export class VisualBehavior implements IInteractiveBehavior {
                     }
                 });
         }
+
+        // const clearCatcher = d3.select(this.mainHtmlElement);
+        behaviorOptions.clearCatcher
+            .on('contextmenu', (e: MouseEvent) => {
+                selectionHandler.handleContextMenu(null, {
+                    x: e.clientX,
+                    y: e.clientY
+                });
+                e.preventDefault();
+                e.stopPropagation();
+            });
     }
 
     public renderSelection(hasSelection: boolean): void {

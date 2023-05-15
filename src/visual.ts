@@ -953,11 +953,11 @@ export class Visual implements IVisual {
                 dataPoints.push({
                     x: xVal,
                     y: yVal,
-                    size: sizeVal,
+                    size: <any>sizeVal,
                     radius: {
                         sizeMeasure: measureSize,
                         index: categoryIdx,
-                        value: sizeVal,
+                        value: <any>sizeVal,
                     },
                     xStart: <any>xStart,
                     xEnd: <any>xEnd,
@@ -969,7 +969,7 @@ export class Visual implements IVisual {
                     identity,
                     formattedCategory: Visual.createLazyFormattedCategory(categoryFormatter, categoryValue),
                     selected: Visual.DefaultSelectionStateOfTheDataPoint,
-                    labelFill: labelSettings.labelColor,
+                    labelFill: (<any>labelSettings).labelColor,
                     labelFontSize: fontSizeInPx,
                     labelFontFamily: <any>labelFontFamily,
                     angleRange: [0, 0],
