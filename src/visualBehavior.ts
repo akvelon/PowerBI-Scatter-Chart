@@ -75,6 +75,16 @@ export class VisualBehavior implements IInteractiveBehavior {
                 });
         }
 
+        this.options.selection
+        .on('contextmenu', (e: MouseEvent, d: VisualDataPoint) => {
+            selectionHandler.handleContextMenu(d, {
+                x: e.clientX,
+                y: e.clientY
+            });
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
         // const clearCatcher = d3.select(this.mainHtmlElement);
         behaviorOptions.clearCatcher
             .on('contextmenu', (e: MouseEvent) => {
