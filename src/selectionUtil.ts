@@ -131,6 +131,7 @@ function onMousedown(e: MouseEvent): void {
     }
 
     if (
+        e.button !== 0 || // ignore if it is not main mouse button  
         e === null
         || e.clientX < axesDimensions.x
         || e.clientX > axesDimensions.x + axesDimensions.width
