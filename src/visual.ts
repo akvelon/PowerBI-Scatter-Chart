@@ -276,6 +276,8 @@ export class Visual implements IVisual {
 
         const dataView = options && options.dataViews && options.dataViews[0];
 
+        this.host.eventService.renderingStarted(options);
+
         if (!dataView) {
             this.clearVisual(this.data?.size ?? options.viewport);
             return;
@@ -707,6 +709,8 @@ export class Visual implements IVisual {
             };
             this.playAxis.update(playAxisUpdateData);
         }
+
+        this.host.eventService.renderingFinished(options);
     }
 
     // eslint-disable-next-line max-lines-per-function

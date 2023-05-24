@@ -2,9 +2,9 @@
   "visual": {
     "name": "scatterChartByAkvelon",
     "guid": "scatterChartByAkvelon6CFB0DAB29E746BE850B6DFD1E2789FD",
-    "displayName": "Scatter Chart by Akvelon 2.0.4",
+    "displayName": "Scatter Chart by Akvelon 2.0.5",
     "visualClassName": "Visual",
-    "version": "2.0.4",
+    "version": "2.0.5",
     "description": "Scatter Chart with rectangle selection support",
     "supportUrl": "http://akvelon.com/feedback",
     "gitHubUrl": "https://github.com/akvelon/PowerBI-Scatter-Chart"
